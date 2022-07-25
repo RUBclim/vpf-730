@@ -99,8 +99,13 @@ def test_fifo_queue_process_msg(queue_msg: Queue) -> None:
     ]
 
 
-def test_fifo_queue_ack_failed_is_retried(queue_msg: Queue) -> None:
-    for i in range(5):
+@pytest.mark.parametrize('max_retries', (1, 5))
+def test_fifo_queue_ack_failed_is_retried(
+        queue_msg: Queue,
+        max_retries: int,
+) -> None:
+    queue_msg.max_retries = max_retries
+    for i in range(max_retries):
         # retry is increased
         msg = queue_msg.get()
         assert msg is not None
@@ -119,8 +124,13 @@ def test_fifo_queue_ack_failed_is_retried(queue_msg: Queue) -> None:
         assert val == [(i + 1,)]
 
 
-def test_fifo_queue_ack_failed_retries_exceeded(queue_msg: Queue) -> None:
-    for _ in range(5):
+@pytest.mark.parametrize('max_retries', (1, 5))
+def test_fifo_queue_ack_failed_retries_exceeded(
+        queue_msg: Queue,
+        max_retries: int,
+) -> None:
+    queue_msg.max_retries = max_retries
+    for _ in range(max_retries):
         msg = queue_msg.get()
         assert msg is not None
         queue_msg.ack_failed(msg)
@@ -149,3 +159,27 @@ def test_fifo_queue_ack_failed_retries_exceeded(queue_msg: Queue) -> None:
         val = ret.fetchall()
 
     assert val == [('eb8ce9d920ff443b842eaf5f9d6b7486',)]
+
+
+def test_queue_is_fifo(queue: Queue) -> None:
+    msg_1 = Message(
+        id=UUID('eb8ce9d920ff443b842eaf5f9d6b7481'),
+        blob=Measurement(timestamp=123456),
+    )
+    msg_2 = Message(
+        id=UUID('eb8ce9d920ff443b842eaf5f9d6b7482'),
+        blob=Measurement(timestamp=123456),
+    )
+
+    queue.put(msg_1)
+    queue.put(msg_2)
+    assert queue.size == 2
+    assert queue.is_empty is False
+    msg_1_ret = queue.get()
+    assert msg_1_ret == msg_1
+    msg_2_ret = queue.get()
+    assert msg_2_ret == msg_2
+    queue.ack(msg_2_ret)
+    queue.ack(msg_1_ret)
+    assert queue.size == 0
+    assert queue.is_empty is True
