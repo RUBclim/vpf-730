@@ -122,14 +122,14 @@ class Queue():
             )
         return msg
 
-    def ack(self, msg: Message) -> None:
+    def task_done(self, msg: Message) -> None:
         with connect(self.db) as db:
             db.execute(
                 'UPDATE queue SET acked = ? WHERE id = ?',
                 (int(datetime.utcnow().timestamp() * 1000), msg.id.hex),
             )
 
-    def ack_failed(self, msg: Message) -> None:
+    def task_failed(self, msg: Message) -> None:
         if msg.retries >= self.max_retries:
             # route to deadletter
             with connect(self.db) as db:
@@ -145,26 +145,22 @@ class Queue():
                 )
                 print(msg.retries + 1)
 
-    @property
-    def size(self) -> int:
+    def qsize(self) -> int:
         with connect(self.db) as db:
             ret = db.execute(
                 'SELECT count(1) FROM queue WHERE fetched IS NULL',
             )
             return ret.fetchone()[0]
 
-    @property
-    def deadletter_size(self) -> int:
+    def deadletter_qsize(self) -> int:
         with connect(self.db) as db:
             ret = db.execute(
                 'SELECT count(1) FROM deadletter_queue WHERE fetched IS NULL',
             )
             return ret.fetchone()[0]
 
-    @property
-    def is_empty(self) -> bool:
-        return self.size == 0
+    def empty(self) -> bool:
+        return self.qsize() == 0
 
-    @property
-    def deadletter_is_empty(self) -> bool:
-        return self.deadletter_size == 0
+    def deadletter_empty(self) -> bool:
+        return self.deadletter_qsize() == 0
