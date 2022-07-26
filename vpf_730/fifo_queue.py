@@ -48,7 +48,7 @@ class Queue():
         self.db = db
         self.max_retries = max_retries
 
-        create_table = '''\
+        create_queue = '''\
             CREATE TABLE IF NOT EXISTS queue(
                 id VARCHAR(36) PRIMARY KEY,
                 enqueued INT NOT NULL,
@@ -57,6 +57,10 @@ class Queue():
                 blob JSON NOT NULL,
                 retries INT DEFAULT 0 NOT NULL
             )
+        '''
+        create_queue_idx = '''\
+            CREATE INDEX IF NOT EXISTS idx_queue_enqueued
+            ON queue(enqueued)
         '''
         create_deadletter = '''\
             CREATE TABLE IF NOT EXISTS deadletter_queue(
@@ -69,8 +73,9 @@ class Queue():
             )
         '''
         with connect(self.db) as con:
-            con.execute(create_table)
+            con.execute(create_queue)
             con.execute(create_deadletter)
+            con.execute(create_queue_idx)
 
     def put(
             self,
@@ -88,9 +93,7 @@ class Queue():
         elif route == 'deadletter_queue':
             # TODO: we should keep the initial enqueued
             queue_params = {
-                'enqueued': int(
-                    datetime.utcnow().timestamp() * 1000,
-                ),
+                'enqueued': int(datetime.utcnow().timestamp() * 1000),
             }
             insert = '''\
                 INSERT INTO deadletter_queue(id, enqueued, blob, retries)
@@ -113,6 +116,9 @@ class Queue():
         with connect(self.db) as db:
             ret = db.execute(get)
             val = ret.fetchone()
+
+        if val is None:
+            return val
 
         msg = Message.from_queue(val)
         with connect(self.db) as db:
@@ -143,7 +149,6 @@ class Queue():
                     'UPDATE queue SET retries = ?, fetched = NULL WHERE id = ?',  # noqa: E501
                     (msg.retries + 1, msg.id.hex),
                 )
-                print(msg.retries + 1)
 
     def qsize(self) -> int:
         with connect(self.db) as db:

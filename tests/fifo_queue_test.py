@@ -9,6 +9,12 @@ from vpf_730.fifo_queue import Message
 from vpf_730.fifo_queue import Queue
 
 
+def test_fifo_queue_no_msg_in_queue(queue: Queue) -> None:
+    assert queue.qsize() == 0
+    assert queue.empty() is True
+    assert queue.get() is None
+
+
 @freeze_time('2022-07-25 14:22:57')
 def test_fifo_queue_put_msg_size_grows(queue: Queue) -> None:
     msg = Message(
