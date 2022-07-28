@@ -5,9 +5,9 @@ from uuid import UUID
 
 import vpf_730.worker
 from vpf_730.fifo_queue import connect
-from vpf_730.fifo_queue import Measurement
 from vpf_730.fifo_queue import Message
 from vpf_730.fifo_queue import Queue
+from vpf_730.vpf_730 import Measurement
 from vpf_730.worker import Worker
 
 
@@ -21,7 +21,10 @@ def test_worker_start_stop(queue: Queue) -> None:
     assert worker.running is False
 
 
-def test_worker_can_process_messages(queue_msg: Queue) -> None:
+def test_worker_can_process_messages(
+        queue_msg: Queue,
+        measurement: Measurement,
+) -> None:
     with mock.patch.object(vpf_730.worker, '_process_msg') as m:
         worker = Worker(queue_msg, daemon=True)
         worker.start()
@@ -30,7 +33,7 @@ def test_worker_can_process_messages(queue_msg: Queue) -> None:
 
     assert m.call_args.args[0] == Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        blob=Measurement(timestamp=123456),
+        blob=measurement,
     )
     assert m.call_count == 1
 
@@ -46,11 +49,14 @@ def test_worker_can_process_messages(queue_msg: Queue) -> None:
         assert v is not None
 
 
-def test_worker_processes_msg_when_interrupted(queue_msg: Queue) -> None:
+def test_worker_processes_msg_when_interrupted(
+        queue_msg: Queue,
+        measurement: Measurement,
+) -> None:
     # enqueue a second message
     msg = Message(
         id=UUID('7efed89097764b9d9499a607eab66a64'),
-        blob=Measurement(timestamp=123456),
+        blob=measurement,
     )
     queue_msg.put(msg)
     assert queue_msg.qsize() == 2
@@ -65,7 +71,7 @@ def test_worker_processes_msg_when_interrupted(queue_msg: Queue) -> None:
     # one task (the first one) should have been processed
     assert m.call_args.args[0] == Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        blob=Measurement(timestamp=123456),
+        blob=measurement,
     )
     assert m.call_count == 1
 
@@ -85,7 +91,16 @@ def test_worker_processes_msg_when_interrupted(queue_msg: Queue) -> None:
 
     assert msg2[0] == '7efed89097764b9d9499a607eab66a64'
     assert msg2[1] is not None
-    assert msg2[2:] == (None, None,  '{"timestamp": 123456}', 0)
+    msg_blob = (
+        '{"timestamp": 1658758977000, "sensor_id": 1, '
+        '"last_measurement_period": 60, "time_since_report": 0, '
+        '"optical_range": 1.19, "precipitation_type_msg": "NP", '
+        '"obstruction_to_vision": "HZ", "receiver_bg_illumination": 0.06, '
+        '"water_in_precip": 0.0, "temp": 20.5, "nr_precip_particles": 0, '
+        '"transmission_eq": 2.51, "exco_less_precip_particle": 2.51, '
+        '"backscatter_exco": 11.1, "self_test": "OOO", "total_exco": 2.51}'
+    )
+    assert msg2[2:] == (None, None,  msg_blob, 0)
 
 
 def test_worker_processes_task_failed(queue_msg: Queue) -> None:

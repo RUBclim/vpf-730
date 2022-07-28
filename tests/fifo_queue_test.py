@@ -4,9 +4,9 @@ import pytest
 from freezegun import freeze_time
 
 from vpf_730.fifo_queue import connect
-from vpf_730.fifo_queue import Measurement
 from vpf_730.fifo_queue import Message
 from vpf_730.fifo_queue import Queue
+from vpf_730.vpf_730 import Measurement
 
 
 def test_fifo_queue_no_msg_in_queue(queue: Queue) -> None:
@@ -16,10 +16,13 @@ def test_fifo_queue_no_msg_in_queue(queue: Queue) -> None:
 
 
 @freeze_time('2022-07-25 14:22:57')
-def test_fifo_queue_put_msg_size_grows(queue: Queue) -> None:
+def test_fifo_queue_put_msg_size_grows(
+        queue: Queue,
+        measurement: Measurement,
+) -> None:
     msg = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        blob=Measurement(timestamp=123456),
+        blob=measurement,
     )
     queue.put(msg)
     assert queue.qsize() == 1
@@ -37,19 +40,29 @@ def test_fifo_queue_put_msg_size_grows(queue: Queue) -> None:
             1658758977000,
             None,
             None,
-            '{"timestamp": 123456}',
+            '{"timestamp": 1658758977000, "sensor_id": 1, '
+            '"last_measurement_period": 60, "time_since_report": 0, '
+            '"optical_range": 1.19, "precipitation_type_msg": "NP", '
+            '"obstruction_to_vision": "HZ", "receiver_bg_illumination": 0.06, '
+            '"water_in_precip": 0.0, "temp": 20.5, "nr_precip_particles": 0, '
+            '"transmission_eq": 2.51, "exco_less_precip_particle": 2.51, '
+            '"backscatter_exco": 11.1, "self_test": "OOO", '
+            '"total_exco": 2.51}',
             0,
         ),
     ]
 
 
-def test_fifo_queue_process_msg(queue_msg: Queue) -> None:
+def test_fifo_queue_process_msg(
+        queue_msg: Queue,
+        measurement: Measurement,
+) -> None:
     with freeze_time('2022-07-25 14:25:00'):
         msg = queue_msg.get()
 
     assert msg == Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        blob=Measurement(timestamp=123456),
+        blob=measurement,
         retries=0,
     )
     with connect(queue_msg.db) as db:
@@ -62,7 +75,14 @@ def test_fifo_queue_process_msg(queue_msg: Queue) -> None:
             1658758977000,
             1658759100000,
             None,
-            '{"timestamp": 123456}',
+            '{"timestamp": 1658758977000, "sensor_id": 1, '
+            '"last_measurement_period": 60, "time_since_report": 0, '
+            '"optical_range": 1.19, "precipitation_type_msg": "NP", '
+            '"obstruction_to_vision": "HZ", "receiver_bg_illumination": 0.06, '
+            '"water_in_precip": 0.0, "temp": 20.5, "nr_precip_particles": 0, '
+            '"transmission_eq": 2.51, "exco_less_precip_particle": 2.51, '
+            '"backscatter_exco": 11.1, "self_test": "OOO", '
+            '"total_exco": 2.51}',
             0,
         ),
     ]
@@ -81,7 +101,14 @@ def test_fifo_queue_process_msg(queue_msg: Queue) -> None:
             1658758977000,
             1658759100000,
             1658759160000,
-            '{"timestamp": 123456}',
+            '{"timestamp": 1658758977000, "sensor_id": 1, '
+            '"last_measurement_period": 60, "time_since_report": 0, '
+            '"optical_range": 1.19, "precipitation_type_msg": "NP", '
+            '"obstruction_to_vision": "HZ", "receiver_bg_illumination": 0.06, '
+            '"water_in_precip": 0.0, "temp": 20.5, "nr_precip_particles": 0, '
+            '"transmission_eq": 2.51, "exco_less_precip_particle": 2.51, '
+            '"backscatter_exco": 11.1, "self_test": "OOO", '
+            '"total_exco": 2.51}',
             0,
         ),
     ]
@@ -149,14 +176,14 @@ def test_fifo_queue_ack_failed_retries_exceeded(
     assert val == [('eb8ce9d920ff443b842eaf5f9d6b7486',)]
 
 
-def test_queue_is_fifo(queue: Queue) -> None:
+def test_queue_is_fifo(queue: Queue, measurement: Measurement) -> None:
     msg_1 = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7481'),
-        blob=Measurement(timestamp=123456),
+        blob=measurement,
     )
     msg_2 = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7482'),
-        blob=Measurement(timestamp=123456),
+        blob=measurement,
     )
 
     queue.put(msg_1)

@@ -9,6 +9,8 @@ from typing import Literal
 from typing import NamedTuple
 from uuid import UUID
 
+from vpf_730.vpf_730 import Measurement
+
 
 @contextlib.contextmanager
 def connect(db_path: str) -> Generator[sqlite3.Connection, None, None]:
@@ -20,10 +22,6 @@ def connect(db_path: str) -> Generator[sqlite3.Connection, None, None]:
     ) as db:
         with db:
             yield db
-
-
-class Measurement(NamedTuple):
-    timestamp: int
 
 
 class Message(NamedTuple):
