@@ -120,7 +120,7 @@ def test_worker_processes_task_failed(queue_msg: Queue) -> None:
     assert queue_msg.deadletter_qsize() == 1
 
     with connect(queue_msg.db) as db:
-        ret = db.execute('SELECT * FROM deadletter_queue')
+        ret = db.execute('SELECT * FROM deadletter')
         val = ret.fetchall()[0]
 
     assert val[0] == 'eb8ce9d920ff443b842eaf5f9d6b7486'

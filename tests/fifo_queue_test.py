@@ -170,7 +170,7 @@ def test_fifo_queue_ack_failed_retries_exceeded(
     queue_msg.deadletter_empty is False
 
     with connect(queue_msg.db) as db:
-        ret = db.execute('SELECT id FROM deadletter_queue')
+        ret = db.execute('SELECT id FROM deadletter')
         val = ret.fetchall()
 
     assert val == [('eb8ce9d920ff443b842eaf5f9d6b7486',)]
@@ -198,3 +198,30 @@ def test_queue_is_fifo(queue: Queue, measurement: Measurement) -> None:
     queue.task_done(msg_1_ret)
     assert queue.qsize() == 0
     assert queue.empty() is True
+
+
+def test_requeue_messages_from_deadletter(
+        queue: Queue,
+        measurement: Measurement,
+) -> None:
+    msg = Message(
+        id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
+        blob=measurement,
+        retries=0,
+    )
+    queue.put(msg=msg, route='deadletter')
+    assert queue.deadletter_qsize() == 1
+    with freeze_time('2022-07-29 13:45'):
+        queue.deadletter_requeue()
+
+    assert queue.deadletter_qsize() == 0
+    assert queue.qsize() == 1
+    with freeze_time('2022-07-29 13:45:30'):
+        new_msg = queue.get()
+
+    assert new_msg == msg
+    with connect(queue.db) as db:
+        ret = db.execute('SELECT enqueued, fetched, retries FROM queue')
+        val = ret.fetchall()
+
+    assert val == [(1659102300000, 1659102330000, 0)]
