@@ -61,7 +61,7 @@ class Queue():
             ON queue(enqueued)
         '''
         create_deadletter = '''\
-            CREATE TABLE IF NOT EXISTS deadletter_queue(
+            CREATE TABLE IF NOT EXISTS deadletter(
                 id VARCHAR(36) PRIMARY KEY,
                 enqueued INT NOT NULL,
                 fetched INT,
@@ -78,7 +78,7 @@ class Queue():
     def put(
             self,
             msg: Message,
-            route: Literal['queue', 'deadletter_queue'] = 'queue',
+            route: Literal['queue', 'deadletter'] = 'queue',
     ) -> UUID:
         if route == 'queue':
             queue_params = {
@@ -88,13 +88,13 @@ class Queue():
                 INSERT INTO queue(id, enqueued, blob, retries)
                 VALUES(:id, :enqueued, :blob, :retries)
             '''
-        elif route == 'deadletter_queue':
+        elif route == 'deadletter':
             # TODO: we should keep the initial enqueued
             queue_params = {
                 'enqueued': int(datetime.utcnow().timestamp() * 1000),
             }
             insert = '''\
-                INSERT INTO deadletter_queue(id, enqueued, blob, retries)
+                INSERT INTO deadletter(id, enqueued, blob, retries)
                 VALUES(:id, :enqueued, :blob, :retries)
             '''
         else:
@@ -106,11 +106,23 @@ class Queue():
 
         return msg.id
 
-    def get(self) -> Message | None:
-        get = '''\
-            SELECT id, blob, retries FROM queue
-            WHERE fetched IS NULL ORDER BY enqueued LIMIT 1
-        '''
+    def get(
+            self,
+            route: Literal['queue', 'deadletter'] = 'queue',
+    ) -> Message | None:
+        if route == 'queue':
+            get = '''\
+                SELECT id, blob, retries FROM queue
+                WHERE fetched IS NULL ORDER BY enqueued LIMIT 1
+            '''
+        elif route == 'deadletter':
+            get = '''\
+                SELECT id, blob, retries FROM deadletter
+                ORDER BY enqueued LIMIT 1
+            '''
+        else:
+            raise NotImplementedError
+
         with connect(self.db) as db:
             ret = db.execute(get)
             val = ret.fetchone()
@@ -139,7 +151,7 @@ class Queue():
             with connect(self.db) as db:
                 db.execute('DELETE FROM queue WHERE id = ?', (msg.id.hex,))
 
-            self.put(msg=msg, route='deadletter_queue')
+            self.put(msg=msg, route='deadletter')
         else:
             # increase number of retries, return back to queue
             with connect(self.db) as db:
@@ -158,7 +170,7 @@ class Queue():
     def deadletter_qsize(self) -> int:
         with connect(self.db) as db:
             ret = db.execute(
-                'SELECT count(1) FROM deadletter_queue WHERE fetched IS NULL',
+                'SELECT count(1) FROM deadletter WHERE fetched IS NULL',
             )
             return ret.fetchone()[0]
 
@@ -167,3 +179,18 @@ class Queue():
 
     def deadletter_empty(self) -> bool:
         return self.deadletter_qsize() == 0
+
+    def deadletter_requeue(self) -> None:
+        while not self.deadletter_empty():
+            msg = self.get(route='deadletter')
+            # msg can't be None if there are still messages in queue
+            assert msg is not None
+            # reset the number of retries
+            msg = msg._replace(retries=0)
+            self.put(msg=msg)
+            # remove from deadletter
+            with connect(self.db) as db:
+                db.execute(
+                    'DELETE FROM deadletter WHERE id = ?',
+                    (msg.id.hex,),
+                )
