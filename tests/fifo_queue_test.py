@@ -22,6 +22,7 @@ def test_fifo_queue_put_msg_size_grows(
 ) -> None:
     msg = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
+        task='test_task',
         blob=measurement,
     )
     queue.put(msg)
@@ -37,6 +38,7 @@ def test_fifo_queue_put_msg_size_grows(
     assert val == [
         (
             'eb8ce9d920ff443b842eaf5f9d6b7486',
+            'test_task',
             1658758977000,
             None,
             None,
@@ -62,6 +64,7 @@ def test_fifo_queue_process_msg(
 
     assert msg == Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
+        task='test_task',
         blob=measurement,
         retries=0,
     )
@@ -72,6 +75,7 @@ def test_fifo_queue_process_msg(
     assert val == [
         (
             'eb8ce9d920ff443b842eaf5f9d6b7486',
+            'test_task',
             1658758977000,
             1658759100000,
             None,
@@ -98,6 +102,7 @@ def test_fifo_queue_process_msg(
     assert val == [
         (
             'eb8ce9d920ff443b842eaf5f9d6b7486',
+            'test_task',
             1658758977000,
             1658759100000,
             1658759160000,
@@ -179,10 +184,12 @@ def test_fifo_queue_ack_failed_retries_exceeded(
 def test_queue_is_fifo(queue: Queue, measurement: Measurement) -> None:
     msg_1 = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7481'),
+        task='test_task',
         blob=measurement,
     )
     msg_2 = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7482'),
+        task='test_task',
         blob=measurement,
     )
 
@@ -206,6 +213,7 @@ def test_requeue_messages_from_deadletter(
 ) -> None:
     msg = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
+        task='test_task',
         blob=measurement,
         retries=0,
     )

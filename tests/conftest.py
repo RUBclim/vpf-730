@@ -40,6 +40,7 @@ def queue(tmpdir):
 def queue_msg(queue, measurement):
     msg = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
+        task='test_task',
         blob=measurement,
     )
     with freeze_time('2022-07-25 14:22:57'):
