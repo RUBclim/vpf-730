@@ -50,9 +50,18 @@ class Message(NamedTuple):
 
 
 class Queue():
-    def __init__(self, db: str, *, max_retries: int = 5) -> None:
+    def __init__(
+            self, db: str,
+            *,
+            max_retries: int = 5,
+            keep_msg: int = 10000,
+            prune_interval: int = 1000,
+    ) -> None:
         self.db = db
         self.max_retries = max_retries
+        self.keep_msg = keep_msg
+        self.prune_interval = prune_interval
+        self._nr_puts = 0
 
         create_queue = '''\
             CREATE TABLE IF NOT EXISTS queue(
@@ -114,6 +123,7 @@ class Queue():
         with connect(self.db) as db:
             db.execute(insert, query_params)
 
+        self._nr_puts += 1
         return msg.id
 
     def get(
@@ -149,6 +159,9 @@ class Queue():
         return msg
 
     def task_done(self, msg: Message) -> None:
+        if self._nr_puts >= self.prune_interval:
+            self._prune()
+
         with connect(self.db) as db:
             db.execute(
                 'UPDATE queue SET acked = ? WHERE id = ?',
@@ -204,3 +217,22 @@ class Queue():
                     'DELETE FROM deadletter WHERE id = ?',
                     (msg.id.hex,),
                 )
+
+    def _prune(self) -> None:
+        with connect(self.db) as db:
+            db.execute(
+                '''\
+                DELETE FROM queue WHERE id IN (
+                    SELECT id FROM queue
+                    WHERE acked IS NOT NULL
+                    ORDER BY acked DESC
+                    LIMIT ? OFFSET ?
+                )
+                ''',
+                (self.keep_msg, self.keep_msg),
+            )
+        # VACUUM needs a separate transaction
+        with connect(self.db) as db:
+            db.execute('VACUUM')
+
+        self._nr_puts = 0

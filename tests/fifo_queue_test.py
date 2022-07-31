@@ -1,4 +1,6 @@
+from unittest import mock
 from uuid import UUID
+from uuid import uuid4
 
 import pytest
 from freezegun import freeze_time
@@ -233,3 +235,39 @@ def test_requeue_messages_from_deadletter(
         val = ret.fetchall()
 
     assert val == [(1659102300000, 1659102330000, 0)]
+
+
+def test_prune_queue(tmpdir, measurement):
+    db_path = tmpdir.join('test.db').ensure()
+    queue = Queue(db_path, keep_msg=6, prune_interval=3)
+    # create messages
+    msgs = [
+        Message(id=uuid4(), task='test_task', blob=measurement)
+        for _ in range(12)
+    ]
+    for msg in msgs:
+        queue.put(msg=msg)
+        queue.task_done(msg=msg)
+
+    with connect(queue.db) as db:
+        ret = db.execute('SELECT id FROM queue')
+        res = ret.fetchall()
+
+    ids_in_db = {i[0] for i in res}
+    exp_ids = {i.id.hex for i in msgs[5:]}
+    assert ids_in_db == exp_ids
+
+
+def test_prune_queue_interval(tmpdir, measurement):
+    db_path = tmpdir.join('test.db').ensure()
+    queue = Queue(db_path, keep_msg=6, prune_interval=3)
+    msgs = [
+        Message(id=uuid4(), task='test_task', blob=measurement)
+        for _ in range(6)
+    ]
+    with mock.patch.object(queue, '_prune', side_effect=queue._prune) as p:
+        for msg in msgs:
+            queue.put(msg=msg)
+            queue.task_done(msg=msg)
+
+    assert p.call_count == 2
