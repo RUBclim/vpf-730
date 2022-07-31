@@ -6,6 +6,7 @@ from freezegun import freeze_time
 from vpf_730.fifo_queue import Message
 from vpf_730.fifo_queue import Queue
 from vpf_730.vpf_730 import Measurement
+from vpf_730.worker import Config
 
 
 @pytest.fixture
@@ -47,3 +48,16 @@ def queue_msg(queue, measurement):
         queue.put(msg)
 
     yield queue
+
+
+@pytest.fixture
+def cfg(tmpdir):
+    local_db = tmpdir.join('local.db').ensure()
+    queue_db = tmpdir.join('queue.db')
+    yield Config(
+        local_db=local_db,
+        queue_db=queue_db,
+        serial_port='/dev/ttyS0',
+        url='https://example.com',
+        api_key='deadbeef',
+    )

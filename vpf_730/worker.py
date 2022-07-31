@@ -1,24 +1,61 @@
 from __future__ import annotations
 
+import os
+import textwrap
 import threading
 import time
+import traceback
+from collections.abc import Iterable
+from collections.abc import Mapping
 from typing import Any
 from typing import Callable
-from typing import Iterable
-from typing import Mapping
+from typing import NamedTuple
 
 from vpf_730.fifo_queue import Message
 from vpf_730.fifo_queue import Queue
 
 
-def _process_msg(msg: Message) -> None:
-    ...
+# this should be generic: https://github.com/python/mypy/issues/11855
+TASKS: dict[str, Callable[[Message, Config], None]] = {}
+
+
+def register(
+        f: Callable[[Message, Config], None],
+) -> Callable[[Message, Config], None]:
+    TASKS[f.__name__] = f
+    return f
+
+
+class Config(NamedTuple):
+    local_db: str
+    queue_db: str
+    serial_port: str
+    url: str
+    api_key: str
+
+    @classmethod
+    def from_env(cls) -> Config:
+        return cls(
+            local_db=os.environ['VPF730_LOCAL_DB'],
+            queue_db=os.environ['VPF730_QUEUE_DB'],
+            serial_port=os.environ['VPF730_PORT'],
+            url=os.environ['VPF730_ENDPOINT'],
+            api_key=os.environ['VPF730_API_KEY'],
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f'{type(self).__name__}(local_db={self.local_db!r}, '
+            f'queue_db={self.queue_db!r}, serial_port={self.serial_port!r}, '
+            f'url={self.url!r}, api_key=***)'
+        )
 
 
 class Worker(threading.Thread):
     def __init__(
             self,
             queue: Queue,
+            cfg: Config,
             group: None = None,
             target: Callable[..., Any] | None = None,
             name: str | None = None,
@@ -32,6 +69,7 @@ class Worker(threading.Thread):
         self.running = True
         self.queue = queue
         self.poll_interval = poll_interval
+        self.cfg = cfg
 
     def run(self) -> None:
         try:
@@ -40,12 +78,19 @@ class Worker(threading.Thread):
                     time.sleep(self.poll_interval)
                 else:
                     msg = self.queue.get()
-                    # if the queue is not empty msg can't be None
+                    # if the queue is not empty, msg can't be None
                     assert msg is not None
                     try:
-                        _process_msg(msg)
+                        call = TASKS[msg.task]
+                        call(msg, self.cfg)
                         self.queue.task_done(msg)
                     except Exception:
+                        print(' worker encountered an Error '. center(79, '='))
+                        print(f'==> tried processing: {msg}')
+                        print(
+                            f'====> Traceback:\n'
+                            f"{textwrap.indent(traceback.format_exc(), '  ')}",
+                        )
                         self.queue.task_failed(msg)
         finally:
             del self._target  # type: ignore [attr-defined]
