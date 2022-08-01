@@ -10,7 +10,7 @@ from vpf_730.worker import register
 @register
 def post_data(msg: Message, cfg: Config) -> None:
     post_data = json.dumps(msg.serialize()['blob']).encode()
-    req = urllib.request.Request(cfg.url, data=post_data)
+    req = urllib.request.Request(cfg.endpoint, data=post_data)
     req.add_header('Authorization', cfg.api_key)
     req.add_header('Content-Type', 'application/json')
     urllib.request.urlopen(req)

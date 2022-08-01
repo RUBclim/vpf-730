@@ -58,6 +58,6 @@ def cfg(tmpdir):
         local_db=local_db,
         queue_db=queue_db,
         serial_port='/dev/ttyS0',
-        url='https://example.com',
+        endpoint='https://example.com',
         api_key='deadbeef',
     )

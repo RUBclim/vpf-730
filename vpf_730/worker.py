@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import configparser
 import os
 import textwrap
 import threading
@@ -30,7 +32,7 @@ class Config(NamedTuple):
     local_db: str
     queue_db: str
     serial_port: str
-    url: str
+    endpoint: str
     api_key: str
 
     @classmethod
@@ -39,7 +41,25 @@ class Config(NamedTuple):
             local_db=os.environ['VPF730_LOCAL_DB'],
             queue_db=os.environ['VPF730_QUEUE_DB'],
             serial_port=os.environ['VPF730_PORT'],
-            url=os.environ['VPF730_ENDPOINT'],
+            endpoint=os.environ['VPF730_ENDPOINT'],
+            api_key=os.environ['VPF730_API_KEY'],
+        )
+
+    @classmethod
+    def from_file(cls, path: str) -> Config:
+        config = configparser.ConfigParser()
+        config.read(path)
+        return cls(
+            **dict(config['vpf_730']),
+        )
+
+    @classmethod
+    def from_argparse(cls, args: argparse.Namespace) -> Config:
+        return cls(
+            local_db=args.local_db,
+            queue_db=args.queue_db,
+            serial_port=args.serial_port,
+            endpoint=args.endpoint,
             api_key=os.environ['VPF730_API_KEY'],
         )
 
@@ -47,7 +67,7 @@ class Config(NamedTuple):
         return (
             f'{type(self).__name__}(local_db={self.local_db!r}, '
             f'queue_db={self.queue_db!r}, serial_port={self.serial_port!r}, '
-            f'url={self.url!r}, api_key=***)'
+            f'endpoint={self.endpoint!r}, api_key=***)'
         )
 
 

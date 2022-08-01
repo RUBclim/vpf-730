@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from argparse import Namespace
 from unittest import mock
 from uuid import UUID
 
@@ -154,7 +155,51 @@ def test_config_from_env():
         local_db='local.db',
         queue_db='queue.db',
         serial_port='/dev/ttyS0',
-        url='https://example.com',
+        endpoint='https://example.com',
+        api_key='deadbeef',
+    )
+    assert exp_cfg == cfg
+
+
+def test_config_from_file(tmpdir):
+    ini_file = tmpdir.join('config.ini')
+    ini_contents = '''\
+[vpf_730]
+local_db=local.db
+queue_db=queue.db
+serial_port=/dev/ttyS0
+endpoint=https://example.com
+api_key=deadbeef
+'''
+    ini_file.write(ini_contents)
+    cfg = Config.from_file(str(ini_file))
+
+    exp_cfg = Config(
+        local_db='local.db',
+        queue_db='queue.db',
+        serial_port='/dev/ttyS0',
+        endpoint='https://example.com',
+        api_key='deadbeef',
+    )
+    assert exp_cfg == cfg
+
+
+def test_config_from_argparse(tmpdir):
+    argparse_ns = Namespace(
+        local_db='local.db',
+        queue_db='queue.db',
+        serial_port='/dev/ttyS0',
+        endpoint='https://example.com',
+    )
+    environ = {'VPF730_API_KEY': 'deadbeef'}
+    with mock.patch.dict(os.environ, environ):
+        cfg = Config.from_argparse(argparse_ns)
+
+    exp_cfg = Config(
+        local_db='local.db',
+        queue_db='queue.db',
+        serial_port='/dev/ttyS0',
+        endpoint='https://example.com',
         api_key='deadbeef',
     )
     assert exp_cfg == cfg
@@ -165,12 +210,13 @@ def test_config_repr():
         local_db='local.db',
         queue_db='queue.db',
         serial_port='/dev/ttyS0',
-        url='https://example.com',
+        endpoint='https://example.com',
         api_key='deadbeef',
     )
     assert repr(cfg) == (
         "Config(local_db='local.db', queue_db='queue.db', "
-        "serial_port='/dev/ttyS0', url='https://example.com', api_key=***)"
+        "serial_port='/dev/ttyS0', endpoint='https://example.com', "
+        'api_key=***)'
     )
 
 
