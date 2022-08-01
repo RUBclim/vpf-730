@@ -254,7 +254,8 @@ def test_prune_queue(tmpdir, measurement):
         res = ret.fetchall()
 
     ids_in_db = {i[0] for i in res}
-    exp_ids = {i.id.hex for i in msgs[5:]}
+    assert len(ids_in_db) == 6
+    exp_ids = {i.id.hex for i in msgs[6:]}
     assert ids_in_db == exp_ids
 
 

@@ -159,14 +159,14 @@ class Queue():
         return msg
 
     def task_done(self, msg: Message) -> None:
-        if self._nr_puts >= self.prune_interval:
-            self._prune()
-
         with connect(self.db) as db:
             db.execute(
                 'UPDATE queue SET acked = ? WHERE id = ?',
                 (int(datetime.utcnow().timestamp() * 1000), msg.id.hex),
             )
+
+        if self._nr_puts >= self.prune_interval:
+            self._prune()
 
     def task_failed(self, msg: Message) -> None:
         if msg.retries >= self.max_retries:
@@ -222,14 +222,14 @@ class Queue():
         with connect(self.db) as db:
             db.execute(
                 '''\
-                DELETE FROM queue WHERE id IN (
+                DELETE FROM queue WHERE id NOT IN (
                     SELECT id FROM queue
                     WHERE acked IS NOT NULL
-                    ORDER BY acked DESC
-                    LIMIT ? OFFSET ?
-                )
+                    ORDER BY enqueued DESC
+                    LIMIT ?
+                ) AND acked IS NOT NULL
                 ''',
-                (self.keep_msg, self.keep_msg),
+                (self.keep_msg,),
             )
         # VACUUM needs a separate transaction
         with connect(self.db) as db:
