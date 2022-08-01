@@ -1,4 +1,10 @@
 covdefaults
 coverage
 freezegun
+furo
+myst_parser
 pytest
+sphinx
+sphinx-argparse
+sphinx-copybutton
+sphinx_autodoc_typehints

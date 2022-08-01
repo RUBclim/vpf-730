@@ -1,0 +1,27 @@
+name: docs
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: install tox
+      run: pip install --upgrade tox
+    - name: build docs
+      run: tox -e docs
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      if: github.ref == 'refs/heads/$default-branch'
+      with:
+        name: built docs
+        path: build
+        retention-days: 10

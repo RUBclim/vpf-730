@@ -20,6 +20,8 @@ V = TypeVar('V')
 
 
 class FrozenDict(Generic[K, V]):
+    """Immutable, generic implementation of a dictionary"""
+
     def __init__(self, d: Mapping[K, V]) -> None:
         self._d = d
 
@@ -76,6 +78,27 @@ OBSTRUCTION_TO_VISION = FrozenDict({
 
 
 class Measurement(NamedTuple):
+    """``NamedTuple`` class representing a Measurement from the VPF-730 sensor.
+    Data as defined in the manual:
+    https://www.biral.com/wp-content/uploads/2019/07/VPF-710-730-750-Manual-102186.08E.pdf
+
+    :param timestamp: Timestamp in milliseconds (UTC)
+    :param sensor_id: Sensor identification number set by the user
+    :param last_measurement_period: Last measurement period in seconds
+    :param time_since_report: Time since this report was generated seconds
+    :param optical_range: Meteorological optical range in km
+    :param precipitation_type_msg: Precipitation type message (one of: ``PRECIP_TYPES``)
+    :param obstruction_to_vision: Obstruction to vision message (one of : ``OBSTRUCTION_TO_VISION``)
+    :param receiver_bg_illumination: Receiver background illumination
+    :param water_in_precip: Amount of water in precipitation in last measurement period in mm
+    :param temp: Temperature in °C
+    :param nr_precip_particles: Number of precipitation particles detected in last measurement period
+    :param transmission_eq: Transmissometer equivalent EXCO km :superscript:`-1`
+    :param exco_less_precip_particle: EXCO less precipitation particle component km :superscript:`-1`
+    :param backscatter_exco: Backscatter EXCO km :superscript:`-1`
+    :param self_test: Self-Test and Monitoring (see Manual section 4.2)
+    :param total_exco: Total EXCO km :superscript:`-1`
+    """  # noqa: E501
     timestamp: int
     sensor_id: int
     last_measurement_period: int
@@ -95,14 +118,32 @@ class Measurement(NamedTuple):
 
     @property
     def precipitation_type_msg_readable(self) -> str:
+        """return the precipitation type message as a human readable message
+        instead of the 2 digit code.
+
+        :return: text message containing the precipitation type
+        """
         return PRECIP_TYPES[self.precipitation_type_msg]
 
     @property
     def obstruction_to_vision_readable(self) -> str:
+        """return the obstruction to vision type message as a human readable
+        message instead of the 2 digit code.
+
+        :return: text message containing the obstruction to vision type
+        """
         return OBSTRUCTION_TO_VISION[self.obstruction_to_vision]
 
     @classmethod
     def from_msg(cls, msg: bytes) -> Measurement:
+        """Constructs a new Measurement ``NamedTuple`` from the bytes read
+
+        :param msg: bytes representing a message read from the sensor using
+            :func:`VPF730.measure` e.g.
+            ``b'PW01,0060,0000,001.19 KM,NP ,HZ,00.06,00.0000,+020.5 C,0000,002.51,002.51,+011.10,  0000,000,OOO,002.51'``
+
+        :return: a new instance of :func:`Measurement`.
+        """  # noqa: E501
         # checksum is off by default
         msg_str = msg.decode()
         msg_list = msg_str.strip().split(',')
@@ -144,6 +185,26 @@ class Measurement(NamedTuple):
 
 
 class VPF730:
+    """A class for interacting with the VPF-730 sensor. Please also see the
+    pySerial documentation: https://pyserial.readthedocs.io/
+
+    :param port: serial port the VPF-730 sensor is connected to
+    :param baudrate: Baud rate such as 9600 or 115200 etc
+    :param bytesize: Number of data bits. Possible values ``5``, ``6``, ``7``, ``8``
+    :param parity: Enable parity checking. Possible values: ``N``, ``E``, ``O``, ``M``, ``S``
+    :param stopbits: Number of stop bits. Possible values: ``1``, ``1.5``, ``2``
+    :param timeout: Set a read timeout value in seconds
+    :param xonxoff: Enable software flow control
+    :param rtscts:  Enable hardware (RTS/CTS) flow control
+    :param write_timeout: Set a write timeout value in seconds
+    :param dsrdtr: Enable hardware (DSR/DTR) flow control
+    :param inter_byte_timeout: Inter-character timeout, None to disable (default)
+    :param exclusive: Set exclusive access mode (POSIX only). A port cannot be
+        opened in exclusive access mode if it is already open in exclusive
+        access mode.
+    :param kwargs: any additional keyword arguments
+    """  # noqa: E501
+
     def __init__(
             self,
             port: str,
@@ -193,6 +254,7 @@ class VPF730:
 
     @contextmanager
     def _open_ser(self) -> Generator[None, None, None]:
+        """Context manager for opening and closing the serial port"""
         try:
             self._ser.open()
             yield
@@ -200,6 +262,11 @@ class VPF730:
             self._ser.close()
 
     def measure(self) -> Measurement:
+        """Read the VPF-730 sensor using the previously configured serial
+        interface and return a measurement.
+
+        :return: a new :func:`Measurement` containing the data read
+        """
         with self._open_ser():
             msg = self._ser.read_until(b'\r\n')
             return Measurement.from_msg(msg)
