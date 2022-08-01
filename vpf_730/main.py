@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import time
 from argparse import RawDescriptionHelpFormatter
 from collections.abc import Sequence
@@ -14,6 +15,16 @@ from vpf_730.tasks import save_locally
 from vpf_730.vpf_730 import VPF730
 from vpf_730.worker import Config
 from vpf_730.worker import Worker
+
+# VPF730_SENTRY_DSN env var needs to be set for monitoring
+try:
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=os.environ.get('VPF730_SENTRY_DSN'),
+        traces_sample_rate=1.0,
+    )
+except ImportError:  # pragma: no cover
+    pass
 
 
 def main_loop(cfg: Config) -> None:

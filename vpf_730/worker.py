@@ -16,6 +16,11 @@ from typing import NamedTuple
 from vpf_730.fifo_queue import Message
 from vpf_730.fifo_queue import Queue
 
+try:
+    import sentry_sdk
+    SENTRY = True
+except ImportError:  # pragma: no cover
+    SENTRY = False
 
 # this should be generic: https://github.com/python/mypy/issues/11855
 TASKS: dict[str, Callable[[Message, Config], None]] = {}
@@ -104,13 +109,15 @@ class Worker(threading.Thread):
                         call = TASKS[msg.task]
                         call(msg, self.cfg)
                         self.queue.task_done(msg)
-                    except Exception:
+                    except Exception as e:
                         print(' worker encountered an Error '. center(79, '='))
                         print(f'==> tried processing: {msg}')
                         print(
                             f'====> Traceback:\n'
                             f"{textwrap.indent(traceback.format_exc(), '  ')}",
                         )
+                        if SENTRY:  # pragma: no cover
+                            sentry_sdk.capture_exception(e)
                         self.queue.task_failed(msg)
         finally:
             del self._target  # type: ignore [attr-defined]
