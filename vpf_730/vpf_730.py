@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from collections.abc import ItemsView
+from collections.abc import Iterable
+from collections.abc import Iterator
+from collections.abc import Mapping
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Any
-from typing import Generator
 from typing import Generic
-from typing import Iterable
-from typing import Iterator
 from typing import Literal
-from typing import Mapping
 from typing import NamedTuple
 from typing import TypeVar
 

@@ -26,29 +26,47 @@ def connect(db_path: str) -> Generator[sqlite3.Connection, None, None]:
 
 class Message(NamedTuple):
     id: UUID
+    # TODO: this should become a callable, serializing: callable.__name__
+    task: str
     blob: Measurement
     retries: int = 0
 
     def serialize(self) -> dict[str, str | int]:
         return {
             'id': self.id.hex,
+            'task': self.task,
             'blob': json.dumps(self.blob._asdict()),
             'retries': self.retries,
         }
 
     @classmethod
-    def from_queue(cls, msg: tuple[str, str, int]) -> Message:
-        return cls(UUID(msg[0]), Measurement(**json.loads(msg[1])), msg[2])
+    def from_queue(cls, msg: tuple[str, str, str, int]) -> Message:
+        return cls(
+            id=UUID(msg[0]),
+            task=msg[1],
+            blob=Measurement(**json.loads(msg[2])),
+            retries=msg[3],
+        )
 
 
 class Queue():
-    def __init__(self, db: str, *, max_retries: int = 5) -> None:
+    def __init__(
+            self, db: str,
+            *,
+            max_retries: int = 5,
+            keep_msg: int = 10000,
+            prune_interval: int = 1000,
+    ) -> None:
         self.db = db
         self.max_retries = max_retries
+        self.keep_msg = keep_msg
+        self.prune_interval = prune_interval
+        self._nr_puts = 0
 
         create_queue = '''\
             CREATE TABLE IF NOT EXISTS queue(
                 id VARCHAR(36) PRIMARY KEY,
+                task TEXT,
                 enqueued INT NOT NULL,
                 fetched INT,
                 acked INT,
@@ -63,6 +81,7 @@ class Queue():
         create_deadletter = '''\
             CREATE TABLE IF NOT EXISTS deadletter(
                 id VARCHAR(36) PRIMARY KEY,
+                task TEXT,
                 enqueued INT NOT NULL,
                 fetched INT,
                 acked INT,
@@ -85,8 +104,8 @@ class Queue():
                 'enqueued': int(datetime.utcnow().timestamp() * 1000),
             }
             insert = '''\
-                INSERT INTO queue(id, enqueued, blob, retries)
-                VALUES(:id, :enqueued, :blob, :retries)
+                INSERT INTO queue(id, task, enqueued, blob, retries)
+                VALUES(:id, :task, :enqueued, :blob, :retries)
             '''
         elif route == 'deadletter':
             # TODO: we should keep the initial enqueued
@@ -94,8 +113,8 @@ class Queue():
                 'enqueued': int(datetime.utcnow().timestamp() * 1000),
             }
             insert = '''\
-                INSERT INTO deadletter(id, enqueued, blob, retries)
-                VALUES(:id, :enqueued, :blob, :retries)
+                INSERT INTO deadletter(id, task, enqueued, blob, retries)
+                VALUES(:id, :task, :enqueued, :blob, :retries)
             '''
         else:
             raise NotImplementedError
@@ -104,6 +123,7 @@ class Queue():
         with connect(self.db) as db:
             db.execute(insert, query_params)
 
+        self._nr_puts += 1
         return msg.id
 
     def get(
@@ -112,12 +132,12 @@ class Queue():
     ) -> Message | None:
         if route == 'queue':
             get = '''\
-                SELECT id, blob, retries FROM queue
+                SELECT id, task, blob, retries FROM queue
                 WHERE fetched IS NULL ORDER BY enqueued LIMIT 1
             '''
         elif route == 'deadletter':
             get = '''\
-                SELECT id, blob, retries FROM deadletter
+                SELECT id, task, blob, retries FROM deadletter
                 ORDER BY enqueued LIMIT 1
             '''
         else:
@@ -144,6 +164,9 @@ class Queue():
                 'UPDATE queue SET acked = ? WHERE id = ?',
                 (int(datetime.utcnow().timestamp() * 1000), msg.id.hex),
             )
+
+        if self._nr_puts >= self.prune_interval:
+            self._prune()
 
     def task_failed(self, msg: Message) -> None:
         if msg.retries >= self.max_retries:
@@ -194,3 +217,22 @@ class Queue():
                     'DELETE FROM deadletter WHERE id = ?',
                     (msg.id.hex,),
                 )
+
+    def _prune(self) -> None:
+        with connect(self.db) as db:
+            db.execute(
+                '''\
+                DELETE FROM queue WHERE id NOT IN (
+                    SELECT id FROM queue
+                    WHERE acked IS NOT NULL
+                    ORDER BY enqueued DESC
+                    LIMIT ?
+                ) AND acked IS NOT NULL
+                ''',
+                (self.keep_msg,),
+            )
+        # VACUUM needs a separate transaction
+        with connect(self.db) as db:
+            db.execute('VACUUM')
+
+        self._nr_puts = 0
