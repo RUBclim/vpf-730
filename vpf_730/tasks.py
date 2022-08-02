@@ -9,6 +9,15 @@ from vpf_730.worker import register
 
 @register
 def post_data(msg: Message, cfg: Config) -> None:
+    """Send a ``POST`` request based on a :func:`vpf_730.fifo_queue.Message` to
+    an http endpoint, which is defined in ``cfg``. The data is send in the body
+    as a ``json``. The authorization is done via setting a header:
+    ``Authorization: api-key``.
+
+    :param msg: the message to post (not serialized)
+    :param cfg: the configuration, a ``NamedTuple``
+        (:func:`vpf_730.worker.Config`) containing the API-key and endpoint url
+    """
     post_data = json.dumps(msg.serialize()['blob']).encode()
     req = urllib.request.Request(cfg.endpoint, data=post_data)
     req.add_header('Authorization', cfg.api_key)
@@ -40,6 +49,12 @@ CREATE_TABLE = '''\
 
 @register
 def save_locally(msg: Message, cfg: Config) -> None:
+    """Save a message locally to a database defined in  ``cfg.local_db``
+
+    :param msg: the message to save to a database (not serialized)
+    :param cfg: the configuration, a ``NamedTuple``
+        (:func:`vpf_730.worker.Config`) containing local database information
+    """
     with connect(cfg.local_db) as db:
         db.execute(CREATE_TABLE)
         db.execute(

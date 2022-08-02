@@ -6,5 +6,6 @@
 .pytest_cache
 .tox
 .vscode
+build
 htmlcov
 venv

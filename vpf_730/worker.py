@@ -29,19 +29,49 @@ TASKS: dict[str, Callable[[Message, Config], None]] = {}
 def register(
         f: Callable[[Message, Config], None],
 ) -> Callable[[Message, Config], None]:
+    """A decorator to register a task for the worker in the ``TASK`` dictionary
+
+    :param f: a callable taking a :func:`vpf_730.fifo_queue.Message` as the
+        first positional argument and a :func:`Config` as the second positional
+        argument. The function should return ``None``.
+
+    :return: the function passed to the decorator
+    """
     TASKS[f.__name__] = f
     return f
 
 
 class Config(NamedTuple):
-    local_db: str
+    """``NamedTuple`` class representing the configuration.
+
+    :param queue_db: path to the sqlite database which is used as a queue
+    :param local_db: path to the local sqlite database, where the measurements
+        are stored
+    :param serial_port: serial port that the VPF-730 sensor is connected to
+    :param endpoint: http endpoint where the data should be posted to using
+        :func:`vpf_730.tasks.post_data`
+    :param api_key: the API-key used to authenticate when sending the ``POST``
+        request in :func:`vpf_730.tasks.post_data`
+    """
     queue_db: str
+    local_db: str
     serial_port: str
     endpoint: str
     api_key: str
 
     @classmethod
     def from_env(cls) -> Config:
+        """Constructs a new Config ``NamedTuple`` from environment variables.
+
+        * ``VPF730_LOCAL_DB`` - path to the sqlite database which is used as  queue
+        * ``VPF730_QUEUE_DB`` - path to the local sqlite database, where the measurements are stored
+        * ``VPF730_PORT`` - serial port that the VPF-730 sensor is connected to
+        * ``VPF730_ENDPOINT`` - http endpoint where the data should be posted to using :func:`vpf_730.tasks.post_data`
+        * ``VPF730_API_KEY`` - the API-key used to authenticate when sending the ``POST`` request in :func:`vpf_730.tasks.post_data`
+
+        :return: a new instance of :func:`Config` created from environment
+            variables.
+        """  # noqa: E501
         return cls(
             local_db=os.environ['VPF730_LOCAL_DB'],
             queue_db=os.environ['VPF730_QUEUE_DB'],
@@ -52,6 +82,24 @@ class Config(NamedTuple):
 
     @classmethod
     def from_file(cls, path: str) -> Config:
+        """Constructs a new Config ``NamedTuple`` from a provided ``.ini``
+        config file.
+
+
+            .. highlight:: ini
+            .. code-block:: ini
+
+                [vpf_730]
+                local_db=local.db
+                queue_db=queue.db
+                serial_port=/dev/ttyS0
+                endpoint=http://localhost:5000/vpf-730
+                api_key=deadbeef
+
+        :param path: path to the ``.ini`` config file with the structure above
+
+        :return: a new instance of :func:`Config` created from a config file
+        """
         config = configparser.ConfigParser()
         config.read(path)
         return cls(
@@ -60,6 +108,15 @@ class Config(NamedTuple):
 
     @classmethod
     def from_argparse(cls, args: argparse.Namespace) -> Config:
+        """Constructs a new Config ``NamedTuple`` from a
+        :func:`argparse.Namespace`, created by the argument parser returned by
+        :func:`vpf_730.main.build_parser`.
+
+        :param args: arguments returned from the argument parser created by
+            build_parser
+
+        :return: a new instance of :func:`Config` created from CLI arguments
+        """
         return cls(
             local_db=args.local_db,
             queue_db=args.queue_db,
@@ -77,6 +134,23 @@ class Config(NamedTuple):
 
 
 class Worker(threading.Thread):
+    """class representing a worker running in a thread. Please also the see
+    python documentation for ``threading.Thread``
+
+    :param queue: a :func:`vpf_730.fifo_queue.Queue` instance the worker should
+        get messages from
+    :param cfg: a configuration :func:`Config`
+    :param group: should be None; reserved for future extension when a
+        ThreadGroup class is implemented.
+    :param target: **unused**
+    :param name: the thread name
+    :param args: **unused**
+    :param kwargs: **unused**
+    :param poll_interval: interval in seconds the worker should poll for
+        messages  (default: ``.1``)
+    :param daemon: thread is started as a ``daemon``
+    """
+
     def __init__(
             self,
             queue: Queue,
@@ -97,6 +171,11 @@ class Worker(threading.Thread):
         self.cfg = cfg
 
     def run(self) -> None:
+        """Worker infinity loop, polling and processing messages.
+
+        Setting the attribute ``Worker.running = False`` will stop the worker
+        after finishing the current task.
+        """
         try:
             while self.running is True:
                 if self.queue.empty():
@@ -124,6 +203,9 @@ class Worker(threading.Thread):
             del self._args, self._kwargs  # type: ignore [attr-defined]
 
     def finish_and_join(self) -> None:
+        """Finish all tasks that are still waiting in the queue and then join
+        the thread.
+        """
         while not self.queue.empty():
             time.sleep(self.poll_interval)
 

@@ -14,6 +14,12 @@ from vpf_730.vpf_730 import Measurement
 
 @contextlib.contextmanager
 def connect(db_path: str) -> Generator[sqlite3.Connection, None, None]:
+    """Context manager to connect to a sqlite database
+
+    :param db_path: path to the sqlite database
+
+    :return: A Generator yielding an open sqlite connection
+    """
     with contextlib.closing(
         sqlite3.connect(
             db_path,
@@ -25,6 +31,19 @@ def connect(db_path: str) -> Generator[sqlite3.Connection, None, None]:
 
 
 class Message(NamedTuple):
+    """``NamedTuple`` class representing a Message which can be enqueued.
+
+    :param id: unique id of the message, should be :func:`uuid.uuid4`.
+    :param task: the name of a registered function i.e. ``my_func.__name__``.
+        The function can be registered using
+        the :func:`vpf_730.worker.register` decorator.
+    :param blob: ``NamedTuple`` (:func:`Measurement`) representing a
+        measurement from the VPF-730 sensor.
+    :param retries: number of times the messages was unsuccessfully picked up
+        by a worker. This is automatically managed by the queue. Calling
+        :func:`Queue.task_failed` will increase this in the database and the
+        next time the message is fetched it will be updated.
+    """
     id: UUID
     # TODO: this should become a callable, serializing: callable.__name__
     task: str
@@ -32,6 +51,12 @@ class Message(NamedTuple):
     retries: int = 0
 
     def serialize(self) -> dict[str, str | int]:
+        """serialize the the :func:`Message` ``NamedTuple`` to a dictionary.
+            The blob containing :func:`vpf_730.vpf_730.Measurement` is
+            serialized to a string representation of a json.
+
+        :return: A serialized version as a dictionary, for insertion into a db
+        """
         return {
             'id': self.id.hex,
             'task': self.task,
@@ -41,6 +66,12 @@ class Message(NamedTuple):
 
     @classmethod
     def from_queue(cls, msg: tuple[str, str, str, int]) -> Message:
+        """Constructs a new message from the result of db query to the queue.
+
+        :param msg: a tuple representing ``[id, task blob, retries]``
+
+        :return: a new instance of :func:`Message`.
+        """
         return cls(
             id=UUID(msg[0]),
             task=msg[1],
@@ -50,8 +81,20 @@ class Message(NamedTuple):
 
 
 class Queue():
+    """A class representing a FIFO message queue
+
+    :param db: a string with the path to the sqlite database
+    :param max_retries: the maximum number of times a messages should be
+        retried before it is put into a deadletter queue (default: 5)
+    :param keep_msg: the number of (successfully processed) messages to keep in
+        the queue database before pruning them (default: 10000)
+    :param prune_interval: after how many messages put (calling
+        :func:`Queue.put`) should the queue-database be pruned (default: 1000)
+    """
+
     def __init__(
-            self, db: str,
+            self,
+            db: str,
             *,
             max_retries: int = 5,
             keep_msg: int = 10000,
@@ -99,6 +142,15 @@ class Queue():
             msg: Message,
             route: Literal['queue', 'deadletter'] = 'queue',
     ) -> UUID:
+        """Add a new message to the queue.
+
+        :param msg: a message, represented by a ``NamedTuple`` :func:`Message`,
+            that should be added to the queue.
+        :param route: in which queue should the message be put. Allowed options
+            are ``'queue'`` or ``'deadletter'`` (default: ``queue``)
+
+        :return: the uuid of the message created
+        """
         if route == 'queue':
             queue_params = {
                 'enqueued': int(datetime.utcnow().timestamp() * 1000),
@@ -130,6 +182,14 @@ class Queue():
             self,
             route: Literal['queue', 'deadletter'] = 'queue',
     ) -> Message | None:
+        """Get a message from the queue. If no message is available, ``None``
+        is returned instead of a :func:`Message`.
+
+        :param route: from which queue should the message be polled. Allowed
+            options are ``'queue'`` or ``'deadletter'`` (default: ``queue``)
+
+        :return: a message (:func:`Message`) or ``None``
+        """
         if route == 'queue':
             get = '''\
                 SELECT id, task, blob, retries FROM queue
@@ -159,6 +219,10 @@ class Queue():
         return msg
 
     def task_done(self, msg: Message) -> None:
+        """Mark a task (:func:`Message`) as done
+
+        :param msg: the :func:`Message` to be marked as done
+        """
         with connect(self.db) as db:
             db.execute(
                 'UPDATE queue SET acked = ? WHERE id = ?',
@@ -169,6 +233,12 @@ class Queue():
             self._prune()
 
     def task_failed(self, msg: Message) -> None:
+        """Mark a task (:func:`Message`) as failed. If the retires exceed the
+        maximum number of retires (``Queue.max_retires``) it is routed to the
+        ``deadletter`` queue otherwise returned back to the ``queue``
+
+        :param msg: the :func:`Message` to be marked as failed
+        """
         if msg.retries >= self.max_retries:
             # route to deadletter
             with connect(self.db) as db:
@@ -184,6 +254,11 @@ class Queue():
                 )
 
     def qsize(self) -> int:
+        """Get the current queue size, meaning the number of :func:`Message`
+        that are available to consumers.
+
+        :return: number of messages that are ready to be picked up
+        """
         with connect(self.db) as db:
             ret = db.execute(
                 'SELECT count(1) FROM queue WHERE fetched IS NULL',
@@ -191,6 +266,11 @@ class Queue():
             return ret.fetchone()[0]
 
     def deadletter_qsize(self) -> int:
+        """Get the current deadletter queue size, meaning the number of
+        :func:`Message` in deadletter.
+
+        :return: number of messages in deadletter
+        """
         with connect(self.db) as db:
             ret = db.execute(
                 'SELECT count(1) FROM deadletter WHERE fetched IS NULL',
@@ -198,12 +278,25 @@ class Queue():
             return ret.fetchone()[0]
 
     def empty(self) -> bool:
+        """Boolean indicating if there are messages in ``queue``
+
+        :return: ``True`` if ``queue`` is empty otherwise ``False``
+        """
         return self.qsize() == 0
 
     def deadletter_empty(self) -> bool:
+        """Boolean indicating if there are messages in ``deadletter``
+
+        :return: ``True`` if ``deadletter`` is empty otherwise ``False``
+        """
+
         return self.deadletter_qsize() == 0
 
     def deadletter_requeue(self) -> None:
+        """Requeue all messages that are in ``deadletter``. Each message is put
+        back into ``queue`` (removed from ``deadletter``) and retries are set
+        to 0, meaning each message is tried ``Queue.max_retries`` again.
+        """
         while not self.deadletter_empty():
             msg = self.get(route='deadletter')
             # msg can't be None if there are still messages in queue
@@ -219,6 +312,9 @@ class Queue():
                 )
 
     def _prune(self) -> None:
+        """Prune the ``queue`` table to the latest ``Queue.keep_msg`` messages
+        and execute a ``VACUUM`` of the database table.
+        """
         with connect(self.db) as db:
             db.execute(
                 '''\
