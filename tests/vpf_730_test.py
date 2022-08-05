@@ -16,6 +16,7 @@ TEST_MSG = b'PW01,0060,0000,001.19 KM,NP ,HZ,00.06,00.0000,+020.5 C,0000,002.51,
 def mock_vpf():
     vpf730 = VPF730(port='/dev/ttyUSB0')
     with (
+        mock.patch.object(Serial, 'write'),
         mock.patch.object(Serial, 'read_until', return_value=TEST_MSG),
         mock.patch.object(Serial, 'open')
     ):
@@ -93,6 +94,31 @@ def test_vpf_730_measure(mock_vpf):
         self_test='OOO',
         total_exco=2.51,
     )
+
+
+def test_vpf_730_measure_empty_msg():
+    vpf730 = VPF730(port='/dev/ttyUSB0')
+    with (
+        mock.patch.object(Serial, 'write'),
+        mock.patch.object(Serial, 'read_until', return_value=b''),
+        mock.patch.object(Serial, 'open')
+    ):
+        m = vpf730.measure()
+
+    assert m is None
+
+
+def test_vpf_730_measure_not_polled_mode():
+    vpf730 = VPF730(port='/dev/ttyUSB0')
+    with (
+        mock.patch.object(Serial, 'write') as w,
+        mock.patch.object(Serial, 'read_until', return_value=b''),
+        mock.patch.object(Serial, 'open')
+    ):
+        m = vpf730.measure(polled_mode=False)
+
+    w.assert_not_called()
+    assert m is None
 
 
 def test_fdict():

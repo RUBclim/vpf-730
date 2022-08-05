@@ -261,12 +261,23 @@ class VPF730:
         finally:
             self._ser.close()
 
-    def measure(self) -> Measurement:
+    def measure(self, polled_mode: bool = True) -> Measurement | None:
         """Read the VPF-730 sensor using the previously configured serial
         interface and return a measurement.
+
+        :param polled_mode: read the sensor in polled mode. The mode can be set
+            in the sensor using the ``OSAMx``, where ``x`` is ``0`` for
+            automatic message transmission disabled and ``1`` for automatic
+            message transmission enabled (default: ``True``).
 
         :return: a new :func:`Measurement` containing the data read
         """
         with self._open_ser():
+            if polled_mode is True:
+                self._ser.write(b'D?\r\n')
+
             msg = self._ser.read_until(b'\r\n')
-            return Measurement.from_msg(msg)
+            if msg:
+                return Measurement.from_msg(msg)
+            else:
+                return None

@@ -36,15 +36,22 @@ def main_loop(cfg: Config) -> None:
         try:
             time.sleep(worker.poll_interval)
             now = datetime.utcnow()
-            if now.minute % 5 == 0 and now.second == 0:
+            if now.second == 0:
                 m = vpf730.measure()
-                post = Message(id=uuid4(), task=post_data.__name__, blob=m)
-                local = Message(id=uuid4(), task=save_locally.__name__, blob=m)
-                queue.put(local)
-                queue.put(post)
-                # we need to sleep a little here, to not accidentally create
-                # two messages
-                time.sleep(1)
+                if m:
+                    post = Message(id=uuid4(), task=post_data.__name__, blob=m)
+                    local = Message(
+                        id=uuid4(),
+                        task=save_locally.__name__,
+                        blob=m,
+                    )
+                    queue.put(local)
+                    queue.put(post)
+                    # we need to sleep a little, to not accidentally create two
+                    # messages
+                    time.sleep(1)
+                else:
+                    print('received an empty message')
         except KeyboardInterrupt:
             try:
                 print('\nwaiting for worker to finish all tasks...')
