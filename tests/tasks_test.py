@@ -26,8 +26,7 @@ def test_post_data(measurement, cfg):
         'Content-type': 'application/json',
     }
     data = json.loads(req.data)
-    # TODO: why twice?
-    assert json.loads(data) == {
+    assert data == {
         'timestamp': 1658758977000,
         'sensor_id': 1,
         'last_measurement_period': 60,
