@@ -5,6 +5,7 @@ import json
 import sqlite3
 from collections.abc import Generator
 from datetime import datetime
+from datetime import timezone
 from typing import Literal
 from typing import NamedTuple
 from uuid import UUID
@@ -153,7 +154,7 @@ class Queue():
         """
         if route == 'queue':
             queue_params = {
-                'enqueued': int(datetime.utcnow().timestamp() * 1000),
+                'enqueued': int(datetime.now(timezone.utc).timestamp() * 1000),
             }
             insert = '''\
                 INSERT INTO queue(id, task, enqueued, blob, retries)
@@ -162,7 +163,7 @@ class Queue():
         elif route == 'deadletter':
             # TODO: we should keep the initial enqueued
             queue_params = {
-                'enqueued': int(datetime.utcnow().timestamp() * 1000),
+                'enqueued': int(datetime.now(timezone.utc).timestamp() * 1000),
             }
             insert = '''\
                 INSERT INTO deadletter(id, task, enqueued, blob, retries)
@@ -214,7 +215,10 @@ class Queue():
         with connect(self.db) as db:
             db.execute(
                 'UPDATE queue SET fetched = ? WHERE id = ?',
-                (int(datetime.utcnow().timestamp() * 1000), msg.id.hex),
+                (
+                    int(datetime.now(timezone.utc).timestamp() * 1000),
+                    msg.id.hex,
+                ),
             )
         return msg
 
@@ -226,7 +230,10 @@ class Queue():
         with connect(self.db) as db:
             db.execute(
                 'UPDATE queue SET acked = ? WHERE id = ?',
-                (int(datetime.utcnow().timestamp() * 1000), msg.id.hex),
+                (
+                    int(datetime.now(timezone.utc).timestamp() * 1000),
+                    msg.id.hex,
+                ),
             )
 
         if self._nr_puts >= self.prune_interval:

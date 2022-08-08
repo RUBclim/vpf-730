@@ -14,13 +14,15 @@ repos:
     -   id: double-quote-string-fixer
     -   id: check-merge-conflict
 -   repo: https://github.com/pycqa/flake8
-    rev: 4.0.1
+    rev: 5.0.4
     hooks:
     -   id: flake8
         additional_dependencies:
             -   flake8-typing-imports
             -   flake8-comprehensions
-            -   flake8-noqa==1.2.2
+            # does not work with flake8>5
+            # -   flake8-noqa==1.2.2
+            -   flake8-ban-utcnow
         args: ["--min-python-version=3.10"]
 -   repo: https://github.com/pre-commit/mirrors-autopep8
     rev: v1.6.0
@@ -41,12 +43,12 @@ repos:
     -   id: add-trailing-comma
         args: [--py36-plus]
 -   repo: https://github.com/asottile/pyupgrade
-    rev: v2.37.2
+    rev: v2.37.3
     hooks:
     -   id: pyupgrade
         args: [--py39-plus]
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.961
+    rev: v0.971
     hooks:
     -   id: mypy
         additional_dependencies: ['types-freezegun']
