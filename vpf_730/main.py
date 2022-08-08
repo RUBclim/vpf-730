@@ -6,6 +6,7 @@ import time
 from argparse import RawDescriptionHelpFormatter
 from collections.abc import Sequence
 from datetime import datetime
+from datetime import timezone
 from uuid import uuid4
 
 from vpf_730.fifo_queue import Message
@@ -35,7 +36,7 @@ def main_loop(cfg: Config) -> None:
     while True:
         try:
             time.sleep(worker.poll_interval)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             if now.second == 0:
                 m = vpf730.measure()
                 if m:

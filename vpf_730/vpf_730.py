@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from collections.abc import Mapping
 from contextlib import contextmanager
 from datetime import datetime
+from datetime import timezone
 from typing import Any
 from typing import Generic
 from typing import Literal
@@ -163,7 +164,7 @@ class Measurement(NamedTuple):
             )
 
         return cls(
-            timestamp=int(datetime.utcnow().timestamp() * 1000),
+            timestamp=int(datetime.now(timezone.utc).timestamp() * 1000),
             # strip the message header
             sensor_id=int(msg_list[0].lstrip('PW')),
             last_measurement_period=int(msg_list[1]),
