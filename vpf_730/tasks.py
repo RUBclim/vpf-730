@@ -18,7 +18,7 @@ def post_data(msg: Message, cfg: Config) -> None:
     :param cfg: the configuration, a ``NamedTuple``
         (:func:`vpf_730.worker.Config`) containing the API-key and endpoint url
     """
-    post_data = json.dumps(msg.serialize()['blob']).encode()
+    post_data = json.dumps(msg.blob._asdict()).encode()
     req = urllib.request.Request(cfg.endpoint, data=post_data)
     req.add_header('Authorization', cfg.api_key)
     req.add_header('Content-Type', 'application/json')
