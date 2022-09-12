@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest import mock
 from uuid import UUID
 from uuid import uuid4
@@ -179,6 +180,45 @@ def test_fifo_queue_ack_failed_is_retried(
 
         # value is updated after ack_failed
         assert val == [(i + 1,)]
+
+
+def test_fifo_queue_ack_failed_is_retried_eta_is_set(
+        tmpdir,
+        measurement,
+):
+    db_path = tmpdir.join('test.db').ensure()
+    queue = Queue(db_path, exponential_backoff=2, max_retries=3)
+    msg = Message(
+        id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
+        task='test_task',
+        blob=measurement,
+    )
+    with freeze_time('2022-09-12 13:49') as ft:
+        queue.put(msg)
+
+        fetched_msg = queue.get()
+        assert fetched_msg is not None
+        assert fetched_msg.eta is None
+        # mark as failed
+        expected_times = (
+            1662990540000 + 1000,
+            # initial timestamp + 1 minute passed (tick) + exponential addition
+            1662990540000 + (60 * 1000) + 4000,
+            # a minute has passed 2 times now
+            1662990540000 + (60 * 1000 * 2) + 9000,
+        )
+        queue.task_failed(fetched_msg)
+        for i, exp_t in zip(range(1, 4), expected_times):
+            # jump forward in time
+            ft.tick(timedelta(seconds=60))
+            # fetch again
+            fetched_msg = queue.get()
+            assert fetched_msg is not None
+            assert fetched_msg.eta == exp_t
+            queue.task_failed(fetched_msg)
+
+        assert queue.qsize() == 0
+        assert queue.deadletter_qsize() == 1
 
 
 @pytest.mark.parametrize('max_retries', (1, 5))
