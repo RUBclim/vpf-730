@@ -50,8 +50,9 @@ class Message(NamedTuple):
     task: str
     blob: Measurement
     retries: int = 0
+    eta: int | None = None
 
-    def serialize(self) -> dict[str, str | int]:
+    def serialize(self) -> dict[str, str | int | None]:
         """serialize the the :func:`Message` ``NamedTuple`` to a dictionary.
             The blob containing :func:`vpf_730.vpf_730.Measurement` is
             serialized to a string representation of a json.
@@ -63,10 +64,11 @@ class Message(NamedTuple):
             'task': self.task,
             'blob': json.dumps(self.blob._asdict()),
             'retries': self.retries,
+            'eta': self.eta,
         }
 
     @classmethod
-    def from_queue(cls, msg: tuple[str, str, str, int]) -> Message:
+    def from_queue(cls, msg: tuple[str, str, str, int, int | None]) -> Message:
         """Constructs a new message from the result of db query to the queue.
 
         :param msg: a tuple representing ``[id, task blob, retries]``
@@ -78,6 +80,7 @@ class Message(NamedTuple):
             task=msg[1],
             blob=Measurement(**json.loads(msg[2])),
             retries=msg[3],
+            eta=msg[4],
         )
 
 
@@ -115,7 +118,8 @@ class Queue():
                 fetched INT,
                 acked INT,
                 blob JSON NOT NULL,
-                retries INT DEFAULT 0 NOT NULL
+                retries INT DEFAULT 0 NOT NULL,
+                eta INT
             )
         '''
         create_queue_idx = '''\
@@ -130,7 +134,8 @@ class Queue():
                 fetched INT,
                 acked INT,
                 blob JSON NOT NULL,
-                retries INT DEFAULT 0 NOT NULL
+                retries INT DEFAULT 0 NOT NULL,
+                eta INT
             )
         '''
         with connect(self.db) as con:
@@ -157,8 +162,8 @@ class Queue():
                 'enqueued': int(datetime.now(timezone.utc).timestamp() * 1000),
             }
             insert = '''\
-                INSERT INTO queue(id, task, enqueued, blob, retries)
-                VALUES(:id, :task, :enqueued, :blob, :retries)
+                INSERT INTO queue(id, task, enqueued, blob, retries, eta)
+                VALUES(:id, :task, :enqueued, :blob, :retries, :eta)
             '''
         elif route == 'deadletter':
             # TODO: we should keep the initial enqueued
@@ -166,8 +171,8 @@ class Queue():
                 'enqueued': int(datetime.now(timezone.utc).timestamp() * 1000),
             }
             insert = '''\
-                INSERT INTO deadletter(id, task, enqueued, blob, retries)
-                VALUES(:id, :task, :enqueued, :blob, :retries)
+                INSERT INTO deadletter(id, task, enqueued, blob, retries, eta)
+                VALUES(:id, :task, :enqueued, :blob, :retries, :eta)
             '''
         else:
             raise NotImplementedError
@@ -184,7 +189,8 @@ class Queue():
             route: Literal['queue', 'deadletter'] = 'queue',
     ) -> Message | None:
         """Get a message from the queue. If no message is available, ``None``
-        is returned instead of a :func:`Message`.
+        is returned instead of a :func:`Message`. Availability is also
+        determined by ``eta``.
 
         :param route: from which queue should the message be polled. Allowed
             options are ``'queue'`` or ``'deadletter'`` (default: ``queue``)
@@ -193,20 +199,28 @@ class Queue():
         """
         if route == 'queue':
             get = '''\
-                SELECT id, task, blob, retries FROM queue
-                WHERE fetched IS NULL ORDER BY enqueued LIMIT 1
-            '''
-        elif route == 'deadletter':
-            get = '''\
-                SELECT id, task, blob, retries FROM deadletter
+                SELECT id, task, blob, retries, eta FROM queue
+                WHERE fetched IS NULL AND (eta IS NULL OR eta <= ?)
                 ORDER BY enqueued LIMIT 1
             '''
+            ts_now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+            with connect(self.db) as db:
+                ret = db.execute(get, (ts_now_ms,))
+                val = ret.fetchone()
+
+        elif route == 'deadletter':
+            # we ignore eta in deadletter on purpose, it'll become active again
+            # when requeued into queue
+            get = '''\
+                SELECT id, task, blob, retries, eta FROM deadletter
+                ORDER BY enqueued LIMIT 1
+            '''
+            with connect(self.db) as db:
+                ret = db.execute(get)
+                val = ret.fetchone()
+
         else:
             raise NotImplementedError
-
-        with connect(self.db) as db:
-            ret = db.execute(get)
-            val = ret.fetchone()
 
         if val is None:
             return val
@@ -268,7 +282,11 @@ class Queue():
         """
         with connect(self.db) as db:
             ret = db.execute(
-                'SELECT count(1) FROM queue WHERE fetched IS NULL',
+                '''\
+                SELECT count(1) FROM queue
+                WHERE fetched IS NULL AND (eta IS NULL OR eta <= ?)
+                ''',
+                (int(datetime.now(timezone.utc).timestamp() * 1000),),
             )
             return ret.fetchone()[0]
 
@@ -280,19 +298,23 @@ class Queue():
         """
         with connect(self.db) as db:
             ret = db.execute(
-                'SELECT count(1) FROM deadletter WHERE fetched IS NULL',
+                '''\
+                SELECT count(1) FROM deadletter
+                WHERE fetched IS NULL AND (eta IS NULL OR eta <= ?)
+                ''',
+                (int(datetime.now(timezone.utc).timestamp() * 1000),),
             )
             return ret.fetchone()[0]
 
     def empty(self) -> bool:
-        """Boolean indicating if there are messages in ``queue``
+        """Boolean indicating if there are available messages in ``queue``
 
         :return: ``True`` if ``queue`` is empty otherwise ``False``
         """
         return self.qsize() == 0
 
     def deadletter_empty(self) -> bool:
-        """Boolean indicating if there are messages in ``deadletter``
+        """Boolean indicating if there are available messages in ``deadletter``
 
         :return: ``True`` if ``deadletter`` is empty otherwise ``False``
         """

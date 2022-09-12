@@ -51,9 +51,12 @@ def test_worker_can_process_messages(
 
     assert len(val) == 1
     res = val[0]
-    assert res[-1] == 0
+    # eta
+    assert res[-1] is None
+    # retries
+    assert res[-2] == 0
     # all values should be set
-    for v in res:
+    for v in res[:-1]:
         assert v is not None
 
 
@@ -94,9 +97,12 @@ def test_worker_processes_msg_when_interrupted(
     assert len(val) == 2
     # first message fully processed
     msg1 = val[0]
-    assert msg1[-1] == 0
-    # all values should be set
-    for v in msg1:
+    # eta
+    assert msg1[-1] is None
+    # retries
+    assert msg1[-2] == 0
+    # all values should be set, only eta is None
+    for v in msg1[:-1]:
         assert v is not None
     # second message not processed
     msg2 = val[1]
@@ -113,7 +119,7 @@ def test_worker_processes_msg_when_interrupted(
         '"transmission_eq": 2.51, "exco_less_precip_particle": 2.51, '
         '"backscatter_exco": 11.1, "self_test": "OOO", "total_exco": 2.51}'
     )
-    assert msg2[3:] == (None, None,  msg_blob, 0)
+    assert msg2[3:] == (None, None,  msg_blob, 0, None)
 
 
 def test_worker_processes_task_failed(queue_msg: Queue, cfg: Config) -> None:
@@ -137,7 +143,8 @@ def test_worker_processes_task_failed(queue_msg: Queue, cfg: Config) -> None:
         val = ret.fetchall()[0]
 
     assert val[0] == 'eb8ce9d920ff443b842eaf5f9d6b7486'
-    assert val[-1] == 5
+    # retries
+    assert val[-2] == 5
 
 
 def test_config_from_env():

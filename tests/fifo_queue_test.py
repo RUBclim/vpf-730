@@ -53,8 +53,41 @@ def test_fifo_queue_put_msg_size_grows(
             '"backscatter_exco": 11.1, "self_test": "OOO", '
             '"total_exco": 2.51}',
             0,
+            None,
         ),
     ]
+
+
+def test_fifo_queue_msg_availability(
+        queue: Queue,
+        measurement: Measurement,
+) -> None:
+    with freeze_time('2022-09-12 13:03:00'):
+        msg = Message(
+            id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
+            task='test_task',
+            blob=measurement,
+            retries=0,
+            eta=1662988000000,
+        )
+        queue.put(msg)
+        assert queue.qsize() == 0
+        assert queue.empty() is True
+        assert queue.get() is None
+
+        # but message is in database
+        with connect(queue.db) as db:
+            ret = db.execute('SELECT * FROM queue')
+            val = ret.fetchall()
+
+        assert val[0][0] == 'eb8ce9d920ff443b842eaf5f9d6b7486'
+
+    # time passes message must become available
+    with freeze_time('2022-09-12 16:06:01'):
+        assert queue.qsize() == 1
+        assert queue.empty() is False
+        msg_from_queue = queue.get()
+        assert msg_from_queue is not None
 
 
 def test_fifo_queue_process_msg(
@@ -90,6 +123,7 @@ def test_fifo_queue_process_msg(
             '"backscatter_exco": 11.1, "self_test": "OOO", '
             '"total_exco": 2.51}',
             0,
+            None,
         ),
     ]
     # message is not available for pickup anymore
@@ -117,6 +151,7 @@ def test_fifo_queue_process_msg(
             '"backscatter_exco": 11.1, "self_test": "OOO", '
             '"total_exco": 2.51}',
             0,
+            None,
         ),
     ]
 
