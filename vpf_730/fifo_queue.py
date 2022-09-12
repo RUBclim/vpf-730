@@ -90,6 +90,10 @@ class Queue():
     :param db: a string with the path to the sqlite database
     :param max_retries: the maximum number of times a messages should be
         retried before it is put into a deadletter queue (default: 5)
+    :param exponential_backoff: exponent to increase the time between retries.
+        This is used to set the ``eta`` when returning the message back to
+        queue after a failure. It calculates this way:
+        ``time_between_retries = current_try ** exponential_backoff``.
     :param keep_msg: the number of (successfully processed) messages to keep in
         the queue database before pruning them (default: 10000)
     :param prune_interval: after how many messages put (calling
@@ -101,11 +105,13 @@ class Queue():
             db: str,
             *,
             max_retries: int = 5,
+            exponential_backoff: int | None = None,
             keep_msg: int = 10000,
             prune_interval: int = 1000,
     ) -> None:
         self.db = db
         self.max_retries = max_retries
+        self.exponential_backoff = exponential_backoff
         self.keep_msg = keep_msg
         self.prune_interval = prune_interval
         self._nr_puts = 0
@@ -268,10 +274,20 @@ class Queue():
             self.put(msg=msg, route='deadletter')
         else:
             # increase number of retries, return back to queue
+            eta = None
+            if self.exponential_backoff is not None:
+                eta = int(datetime.now(timezone.utc).timestamp() * 1000)
+                add_ms = ((msg.retries + 1) ** self.exponential_backoff) * 1000
+                eta += add_ms
+
             with connect(self.db) as db:
                 db.execute(
-                    'UPDATE queue SET retries = ?, fetched = NULL WHERE id = ?',  # noqa: E501
-                    (msg.retries + 1, msg.id.hex),
+                    '''\
+                    UPDATE queue
+                    SET retries = ?, fetched = NULL, eta = ?
+                    WHERE id = ?
+                    ''',
+                    (msg.retries + 1, eta, msg.id.hex),
                 )
 
     def qsize(self) -> int:
