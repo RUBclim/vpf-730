@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Generator
 from collections.abc import ItemsView
 from collections.abc import Iterable
@@ -8,13 +9,20 @@ from collections.abc import Mapping
 from contextlib import contextmanager
 from datetime import datetime
 from datetime import timezone
+from functools import wraps
 from typing import Any
+from typing import Callable
 from typing import Generic
 from typing import Literal
 from typing import NamedTuple
 from typing import TypeVar
 
 import serial
+
+if sys.version_info >= (3, 10):  # pragma >=3.10 cover
+    from typing import ParamSpec
+else:  # pragma <3.10 cover
+    from typing_extensions import ParamSpec
 
 K = TypeVar('K')
 V = TypeVar('V')
@@ -282,3 +290,33 @@ class VPF730:
                 return Measurement.from_msg(msg)
             else:
                 return None
+
+
+P = ParamSpec('P')
+R = TypeVar('R')
+
+
+def retry(
+        retries: int,
+        exceptions: tuple[type[Exception], ...] = (Exception,),
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Decorator to retry a function n times when a specific exceptions is
+    raised. If any other exceptions is raised it will not retry.
+
+    :param retries: number of times a function is retried
+    :param exceptions: the exceptions to except and retry
+    """
+    def retry_dec(f: Callable[P, R]) -> Callable[P, R]:
+        @wraps(f)
+        def inner(*args: P.args, **kwargs: P.kwargs) -> R:
+            curr_tries = 0
+            while True:
+                try:
+                    return f(*args, **kwargs)
+                except exceptions:
+                    if curr_tries >= retries:
+                        raise
+                    curr_tries += 1
+
+        return inner
+    return retry_dec
