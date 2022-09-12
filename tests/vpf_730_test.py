@@ -6,6 +6,7 @@ from serial import Serial
 
 from vpf_730.vpf_730 import FrozenDict
 from vpf_730.vpf_730 import Measurement
+from vpf_730.vpf_730 import retry
 from vpf_730.vpf_730 import VPF730
 
 
@@ -132,3 +133,36 @@ def test_fdict():
     assert list(fdict.keys()) == ['test']
     assert list(fdict.items()) == [('test', 123)]
     assert repr(fdict) == "FrozenDict({'test': 123})"
+
+
+def test_retry_exception_allowed():
+    m = mock.Mock()
+
+    @retry(retries=3, exceptions=(ValueError, TypeError))
+    def f(e):
+        m()
+        raise e
+
+    with pytest.raises(ValueError):
+        f(ValueError)
+
+    assert m.call_count == 4
+
+    with pytest.raises(TypeError):
+        f(TypeError)
+
+    assert m.call_count == 8
+
+
+def test_retry_other_exception():
+    m = mock.Mock()
+
+    @retry(retries=3, exceptions=(ValueError,))
+    def f():
+        m()
+        raise Exception
+
+    with pytest.raises(Exception):
+        f()
+
+    assert m.call_count == 1

@@ -13,6 +13,8 @@ from vpf_730.fifo_queue import Message
 from vpf_730.fifo_queue import Queue
 from vpf_730.tasks import post_data
 from vpf_730.tasks import save_locally
+from vpf_730.vpf_730 import Measurement
+from vpf_730.vpf_730 import retry
 from vpf_730.vpf_730 import VPF730
 from vpf_730.worker import Config
 from vpf_730.worker import Worker
@@ -28,6 +30,11 @@ except ImportError:  # pragma: no cover
     pass
 
 
+@retry(retries=3)
+def _get_measurement(vpf730: VPF730) -> Measurement | None:
+    return vpf730.measure()
+
+
 def main_loop(cfg: Config) -> None:
     queue = Queue(cfg.queue_db, keep_msg=1000, prune_interval=100)
     vpf730 = VPF730(cfg.serial_port)
@@ -38,7 +45,7 @@ def main_loop(cfg: Config) -> None:
             time.sleep(worker.poll_interval)
             now = datetime.now(timezone.utc)
             if now.second == 0:
-                m = vpf730.measure()
+                m = _get_measurement(vpf730)
                 if m:
                     post = Message(id=uuid4(), task=post_data.__name__, blob=m)
                     local = Message(
