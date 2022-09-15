@@ -4,7 +4,6 @@ repos:
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
-    -   id: check-docstring-first
     -   id: check-json
     -   id: check-yaml
     -   id: name-tests-test
@@ -20,8 +19,7 @@ repos:
         additional_dependencies:
             -   flake8-typing-imports
             -   flake8-comprehensions
-            # does not work with flake8>5
-            # -   flake8-noqa==1.2.2
+            -   flake8-noqa
             -   flake8-ban-utcnow
         args: ["--min-python-version=3.10"]
 -   repo: https://github.com/pre-commit/mirrors-autopep8
