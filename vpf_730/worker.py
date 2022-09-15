@@ -56,8 +56,8 @@ class Config(NamedTuple):
     queue_db: str
     local_db: str
     serial_port: str
-    endpoint: str
-    api_key: str
+    endpoint: str | None = None
+    api_key: str | None = None
 
     @classmethod
     def from_env(cls) -> Config:

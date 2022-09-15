@@ -3,10 +3,13 @@ import urllib.request
 from unittest import mock
 from uuid import UUID
 
+import pytest
+
 from vpf_730.fifo_queue import connect
 from vpf_730.fifo_queue import Message
 from vpf_730.tasks import post_data
 from vpf_730.tasks import save_locally
+from vpf_730.worker import Config
 
 
 def test_post_data(measurement, cfg):
@@ -44,6 +47,25 @@ def test_post_data(measurement, cfg):
         'self_test': 'OOO',
         'total_exco': 2.51,
     }
+
+
+def test_post_data_invalid_cfg(measurement):
+    msg = Message(
+        id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
+        task='test_task',
+        blob=measurement,
+    )
+    cfg = Config(
+        queue_db='queue.db',
+        local_db='local.db',
+        serial_port='/dev/ttyUSB0',
+    )
+    with pytest.raises(ValueError) as exc_info:
+        post_data(msg, cfg)
+
+    assert exc_info.value.args[0] == (
+        'no values for endpoint or api_key provided in the cfg object'
+    )
 
 
 def test_save_locally(measurement, cfg):
