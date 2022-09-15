@@ -15,7 +15,7 @@ from vpf_730.vpf_730 import Measurement
 
 @contextlib.contextmanager
 def connect(db_path: str) -> Generator[sqlite3.Connection, None, None]:
-    """Context manager to connect to a sqlite database
+    """Context manager to connect to a sqlite database.
 
     :param db_path: path to the sqlite database
 
@@ -32,18 +32,23 @@ def connect(db_path: str) -> Generator[sqlite3.Connection, None, None]:
 
 
 class Message(NamedTuple):
-    """``NamedTuple`` class representing a Message which can be enqueued.
+    """A ``NamedTuple`` class representing a Message which can be enqueued.
 
-    :param id: unique id of the message, should be :func:`uuid.uuid4`.
+    :param id: unique id of the message, should be :func:`uuid.uuid4`
     :param task: the name of a registered function i.e. ``my_func.__name__``.
         The function can be registered using
         the :func:`vpf_730.worker.register` decorator.
-    :param blob: ``NamedTuple`` (:func:`Measurement`) representing a
-        measurement from the VPF-730 sensor.
+    :param blob: ``NamedTuple`` (:func:`vpf_730.vpf_730.Measurement`)
+        representing a measurement from the VPF-730 sensor.
     :param retries: number of times the messages was unsuccessfully picked up
         by a worker. This is automatically managed by the queue. Calling
         :func:`Queue.task_failed` will increase this in the database and the
         next time the message is fetched it will be updated.
+    :param eta: ETA (estimated time of arrival), a unix-timestamp in
+        milliseconds which lets you set a specific date and time that is the
+        earliest time at which the task will become visible to workers and can
+        be executed. If a message should become visible instantly, set it to
+        ``None``.
     """
     id: UUID
     # TODO: this should become a callable, serializing: callable.__name__
@@ -55,9 +60,11 @@ class Message(NamedTuple):
     def serialize(self) -> dict[str, str | int | None]:
         """serialize the the :func:`Message` ``NamedTuple`` to a dictionary.
             The blob containing :func:`vpf_730.vpf_730.Measurement` is
-            serialized to a string representation of a json.
+            serialized to a string representation of a ``json``. This is used
+            internally when calling :func:`Queue.put`.
 
-        :return: A serialized version as a dictionary, for insertion into a db
+        :return: A serialized version of the :func:`Message` as a dictionary,
+            for insertion into a sqlite db
         """
         return {
             'id': self.id.hex,
@@ -69,9 +76,11 @@ class Message(NamedTuple):
 
     @classmethod
     def from_queue(cls, msg: tuple[str, str, str, int, int | None]) -> Message:
-        """Constructs a new message from the result of db query to the queue.
+        """Constructs a new :func:`Message` from the result of a db query to
+        the queue. It is used internally when executing :func:`Queue.get`.
 
-        :param msg: a tuple representing ``[id, task blob, retries]``
+        :param msg: a tuple which is the result of a query to the db and
+            representing ``[id, task blob, retries, eta]``
 
         :return: a new instance of :func:`Message`.
         """
@@ -85,19 +94,19 @@ class Message(NamedTuple):
 
 
 class Queue():
-    """A class representing a FIFO message queue
+    r"""A class representing a FIFO message queue
 
     :param db: a string with the path to the sqlite database
     :param max_retries: the maximum number of times a messages should be
         retried before it is put into a deadletter queue (default: 5)
     :param exponential_backoff: exponent to increase the time between retries.
-        This is used to set the ``eta`` when returning the message back to
-        queue after a failure. It calculates this way:
-        ``time_between_retries = current_try ** exponential_backoff``.
+        This is used to set the ``eta`` when returning the message back to the
+        queue after a failure. It is calculated this way:
+        :math:`t = n^{exponential\_backoff}`.
     :param keep_msg: the number of (successfully processed) messages to keep in
         the queue database before pruning them (default: 10000)
-    :param prune_interval: after how many messages put (calling
-        :func:`Queue.put`) should the queue-database be pruned (default: 1000)
+    :param prune_interval: after how many messages that were :func:`Queue.put`
+        into the queue, should the queue-database be pruned (default: 1000)
     """
 
     def __init__(
@@ -154,10 +163,9 @@ class Queue():
             msg: Message,
             route: Literal['queue', 'deadletter'] = 'queue',
     ) -> UUID:
-        """Add a new message to the queue.
+        """Add a new message to the queue (determined by ``route``).
 
-        :param msg: a message, represented by a ``NamedTuple`` :func:`Message`,
-            that should be added to the queue.
+        :param msg: a :func:`Message`, that should be added to the queue.
         :param route: in which queue should the message be put. Allowed options
             are ``'queue'`` or ``'deadletter'`` (default: ``queue``)
 
@@ -194,14 +202,16 @@ class Queue():
             self,
             route: Literal['queue', 'deadletter'] = 'queue',
     ) -> Message | None:
-        """Get a message from the queue. If no message is available, ``None``
-        is returned instead of a :func:`Message`. Availability is also
-        determined by ``eta``.
+        """Get a message from a queue (determined by ``route``). If no message
+        is available, ``None`` is returned instead of a :func:`Message`.
+        Availability of a :func:`Message` is also determined by ``eta``. If the
+        ``eta`` of a :func:`Message` lies in the future, it cannot be fetched
+        using :func:`Queue.get`.
 
         :param route: from which queue should the message be polled. Allowed
             options are ``'queue'`` or ``'deadletter'`` (default: ``queue``)
 
-        :return: a message (:func:`Message`) or ``None``
+        :return: a :func:`Message` or ``None``
         """
         if route == 'queue':
             get = '''\
@@ -243,7 +253,7 @@ class Queue():
         return msg
 
     def task_done(self, msg: Message) -> None:
-        """Mark a task (:func:`Message`) as done
+        """Mark a task (:func:`Message`) as done.
 
         :param msg: the :func:`Message` to be marked as done
         """
@@ -260,9 +270,10 @@ class Queue():
             self._prune()
 
     def task_failed(self, msg: Message) -> None:
-        """Mark a task (:func:`Message`) as failed. If the retires exceed the
-        maximum number of retires (``Queue.max_retires``) it is routed to the
-        ``deadletter`` queue otherwise returned back to the ``queue``
+        """Mark a task (:func:`Message`) as failed. If the number of
+        ``retires`` exceed the maximum number of retires
+        (``Queue.max_retires``) the :func:`Message` is routed to the
+        ``deadletter`` queue. Otherwise it is returned back to the ``queue``.
 
         :param msg: the :func:`Message` to be marked as failed
         """
@@ -292,7 +303,7 @@ class Queue():
 
     def qsize(self) -> int:
         """Get the current queue size, meaning the number of :func:`Message`
-        that are available to consumers.
+        that are available to consumers in ``queue``.
 
         :return: number of messages that are ready to be picked up
         """
@@ -307,10 +318,10 @@ class Queue():
             return ret.fetchone()[0]
 
     def deadletter_qsize(self) -> int:
-        """Get the current deadletter queue size, meaning the number of
-        :func:`Message` in deadletter.
+        """Get the current deadletter queue size, meaning the total number of
+        :func:`Message` in ``deadletter``.
 
-        :return: number of messages in deadletter
+        :return: number of :func:`Message` in deadletter
         """
         with connect(self.db) as db:
             ret = db.execute(
@@ -323,14 +334,14 @@ class Queue():
             return ret.fetchone()[0]
 
     def empty(self) -> bool:
-        """Boolean indicating if there are available messages in ``queue``
+        """Boolean indicating if there are messages in ``queue``.
 
         :return: ``True`` if ``queue`` is empty otherwise ``False``
         """
         return self.qsize() == 0
 
     def deadletter_empty(self) -> bool:
-        """Boolean indicating if there are available messages in ``deadletter``
+        """A boolean indicating if there are messages in ``deadletter``.
 
         :return: ``True`` if ``deadletter`` is empty otherwise ``False``
         """
@@ -339,7 +350,7 @@ class Queue():
 
     def deadletter_requeue(self) -> None:
         """Requeue all messages that are in ``deadletter``. Each message is put
-        back into ``queue`` (removed from ``deadletter``) and retries are set
+        back into ``queue`` and removed from ``deadletter``. Retries are reset
         to 0, meaning each message is tried ``Queue.max_retries`` again.
         """
         while not self.deadletter_empty():

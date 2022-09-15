@@ -14,9 +14,11 @@ def post_data(msg: Message, cfg: Config) -> None:
     as a ``json``. The authorization is done via setting a header:
     ``Authorization: api-key``.
 
-    :param msg: the message to post (not serialized)
+    :param msg: the :func:`vpf_730.fifo_queue.Message` to post (not yet
+        serialized)
     :param cfg: the configuration, a ``NamedTuple``
-        (:func:`vpf_730.worker.Config`) containing the API-key and endpoint url
+        (:func:`vpf_730.worker.Config`) containing the needed API-key and
+        endpoint url
     """
     if cfg.endpoint is None or cfg.api_key is None:
         raise ValueError(
@@ -54,11 +56,13 @@ CREATE_TABLE = '''\
 
 @register
 def save_locally(msg: Message, cfg: Config) -> None:
-    """Save a message locally to a database defined in  ``cfg.local_db``
+    """Save a :func:`vpf_730.fifo_queue.Message` locally to a database that is
+    defined in  ``cfg.local_db``.
 
-    :param msg: the message to save to a database (not serialized)
-    :param cfg: the configuration, a ``NamedTuple``
-        (:func:`vpf_730.worker.Config`) containing local database information
+    :param msg: the :func:`vpf_730.fifo_queue.Message` to save to a database
+        (not yet serialized)
+    :param cfg: the :func:`vpf_730.worker.Config` containing the local database
+        information
     """
     with connect(cfg.local_db) as db:
         db.execute(CREATE_TABLE)

@@ -14,8 +14,25 @@ pip install vpf-730
 
 **vpf-730** can be used as a standalone CLI tool with limited configuration and features or as a library to build your own tool.
 
-- When using it as a CLI tool: [configuration](configuration)
-- When building your own tooling: [package](package)
+- When using it as a CLI tool see [Configuration](configuration) for detailed usage. Get started with:
+
+  ```bash
+  VPF730_API_KEY=deadbeef \
+  vpf-730 \
+  --local-db local.db \
+  --queue-db queue.db \
+  --serial-port /dev/ttyS0 \
+  --endpoint https://api.example.com
+  ```
+
+- When building your own tooling see [Package](package) for detailed examples. Get started with:
+
+  ```python
+    from vpf_730.vpf_730 import VPF730
+
+    vpf730 = VPF730(port='/dev/ttyS1')
+    print(vpf730.measure())
+  ```
 
 ```{toctree}
 ---

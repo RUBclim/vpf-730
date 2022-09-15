@@ -23,13 +23,30 @@ except ImportError:  # pragma: no cover
     SENTRY = False
 
 # this should be generic: https://github.com/python/mypy/issues/11855
+"""
+Dictionary containing the tasks that are registered. The workers uses the task
+name ``my_func.__name__`` to get the corresponding ``Callable``. Tasks may be
+added to this using the :func:`register` decorator.
+"""
 TASKS: dict[str, Callable[[Message, Config], None]] = {}
 
 
 def register(
         f: Callable[[Message, Config], None],
 ) -> Callable[[Message, Config], None]:
-    """A decorator to register a task for the worker in the ``TASK`` dictionary
+    """A decorator to register a task for the worker in the :const:`TASK`
+    dictionary. The registered function must take a
+    :func:`vpf_730.fifo_queue.Message` as the first positional argument and a
+    :func:`Config` as the second and must return ``None``. This can be done
+    like this:
+
+    .. highlight:: python
+    .. code-block:: python
+
+        @register
+        def my_func(msg: Message, cfg: Config) -> None:
+            ...
+            return None
 
     :param f: a callable taking a :func:`vpf_730.fifo_queue.Message` as the
         first positional argument and a :func:`Config` as the second positional
@@ -42,7 +59,7 @@ def register(
 
 
 class Config(NamedTuple):
-    """``NamedTuple`` class representing the configuration.
+    """A class representing the configuration of the software.
 
     :param queue_db: path to the sqlite database which is used as a queue
     :param local_db: path to the local sqlite database, where the measurements
@@ -61,7 +78,7 @@ class Config(NamedTuple):
 
     @classmethod
     def from_env(cls) -> Config:
-        """Constructs a new Config ``NamedTuple`` from environment variables.
+        """Constructs a new :func:`Config` from environment variables.
 
         * ``VPF730_LOCAL_DB`` - path to the sqlite database which is used as  queue
         * ``VPF730_QUEUE_DB`` - path to the local sqlite database, where the measurements are stored
@@ -82,9 +99,8 @@ class Config(NamedTuple):
 
     @classmethod
     def from_file(cls, path: str) -> Config:
-        """Constructs a new Config ``NamedTuple`` from a provided ``.ini``
-        config file.
-
+        """Constructs a new :func:`Config` from a provided ``.ini`` config
+        file with this format:
 
             .. highlight:: ini
             .. code-block:: ini
@@ -102,18 +118,16 @@ class Config(NamedTuple):
         """
         config = configparser.ConfigParser()
         config.read(path)
-        return cls(
-            **dict(config['vpf_730']),
-        )
+        return cls(**dict(config['vpf_730']))
 
     @classmethod
     def from_argparse(cls, args: argparse.Namespace) -> Config:
-        """Constructs a new Config ``NamedTuple`` from a
-        :func:`argparse.Namespace`, created by the argument parser returned by
+        """Constructs a new :func:`Config` from a :func:`argparse.Namespace`,
+        created by the argument parser returned by
         :func:`vpf_730.main.build_parser`.
 
         :param args: arguments returned from the argument parser created by
-            build_parser
+            :func:`vpf_730.main.build_parser`
 
         :return: a new instance of :func:`Config` created from CLI arguments
         """
@@ -136,12 +150,13 @@ class Config(NamedTuple):
 class Worker(threading.Thread):
     """class representing a worker running in a thread. Please also the see
     python documentation for ``threading.Thread``
+    (https://docs.python.org/3/library/threading.html#thread-objects).
 
     :param queue: a :func:`vpf_730.fifo_queue.Queue` instance the worker should
         get messages from
-    :param cfg: a configuration :func:`Config`
+    :param cfg: a :func:`Config` object providing all information
     :param group: should be None; reserved for future extension when a
-        ThreadGroup class is implemented.
+        ``ThreadGroup`` class is implemented.
     :param target: **unused**
     :param name: the thread name
     :param args: **unused**
@@ -174,7 +189,8 @@ class Worker(threading.Thread):
         """Worker infinity loop, polling and processing messages.
 
         Setting the attribute ``Worker.running = False`` will stop the worker
-        after finishing the current task.
+        after finishing the currently running task. The polling interval of the
+        worker can be set using ``Worker.poll_interval``.
         """
         try:
             while self.running is True:
@@ -204,7 +220,8 @@ class Worker(threading.Thread):
 
     def finish_and_join(self) -> None:
         """Finish all tasks that are still waiting in the queue and then join
-        the thread.
+        the thread. This does not apply to tasks having an `eta` in the future.
+        Only currently visible messages are considered.
         """
         while not self.queue.empty():
             time.sleep(self.poll_interval)
