@@ -29,7 +29,7 @@ V = TypeVar('V')
 
 
 class FrozenDict(Generic[K, V]):
-    """Immutable, generic implementation of a dictionary"""
+    """Immutable, generic implementation of a frozen dictionary."""
 
     def __init__(self, d: Mapping[K, V]) -> None:
         self._d = d
@@ -59,6 +59,10 @@ class FrozenDict(Generic[K, V]):
         return f'{type(self).__name__}({self._d})'
 
 
+"""
+Frozen Dictionary mapping the precipitation types abbreviations to their full
+name form.
+"""
 PRECIP_TYPES = FrozenDict({
     'NP': 'No precipitation',
     'DZ-': 'Slight drizzle',
@@ -76,6 +80,10 @@ PRECIP_TYPES = FrozenDict({
     'X': 'Initial value or error',
 })
 
+"""
+Frozen Dictionary mapping the obstruction to vision abbreviations to their full
+name form.
+"""
 OBSTRUCTION_TO_VISION = FrozenDict({
     '': 'No obstruction',
     'HZ': 'Haze',
@@ -96,8 +104,8 @@ class Measurement(NamedTuple):
     :param last_measurement_period: Last measurement period in seconds
     :param time_since_report: Time since this report was generated seconds
     :param optical_range: Meteorological optical range in km
-    :param precipitation_type_msg: Precipitation type message (one of: ``PRECIP_TYPES``)
-    :param obstruction_to_vision: Obstruction to vision message (one of : ``OBSTRUCTION_TO_VISION``)
+    :param precipitation_type_msg: Precipitation type message (one of:  :const:`PRECIP_TYPES`)
+    :param obstruction_to_vision: Obstruction to vision message (one of: :const:`OBSTRUCTION_TO_VISION`)
     :param receiver_bg_illumination: Receiver background illumination
     :param water_in_precip: Amount of water in precipitation in last measurement period in mm
     :param temp: Temperature in °C
@@ -127,8 +135,9 @@ class Measurement(NamedTuple):
 
     @property
     def precipitation_type_msg_readable(self) -> str:
-        """return the precipitation type message as a human readable message
-        instead of the 2 digit code.
+        """Return the precipitation type message as a human readable message
+        instead of the 2 digit abbreviation. This is for convenience and is
+        just using :const:`PRECIP_TYPES` internally.
 
         :return: text message containing the precipitation type
         """
@@ -136,8 +145,9 @@ class Measurement(NamedTuple):
 
     @property
     def obstruction_to_vision_readable(self) -> str:
-        """return the obstruction to vision type message as a human readable
-        message instead of the 2 digit code.
+        """Return the obstruction to vision type message as a human readable
+        message instead of the 2 digit abbreviation.T his is just for
+        convenience and is using :const:`OBSTRUCTION_TO_VISION` internally.
 
         :return: text message containing the obstruction to vision type
         """
@@ -145,7 +155,7 @@ class Measurement(NamedTuple):
 
     @classmethod
     def from_msg(cls, msg: bytes) -> Measurement:
-        """Constructs a new Measurement ``NamedTuple`` from the bytes read
+        """Constructs a new :func:`Measurement` from the bytes read.
 
         :param msg: bytes representing a message read from the sensor using
             :func:`VPF730.measure` e.g.
@@ -272,14 +282,16 @@ class VPF730:
 
     def measure(self, polled_mode: bool = True) -> Measurement | None:
         """Read the VPF-730 sensor using the previously configured serial
-        interface and return a measurement.
+        interface and return a :func:`Measurement` or None, if the sensor did
+        not return any data.
 
         :param polled_mode: read the sensor in polled mode. The mode can be set
-            in the sensor using the ``OSAMx``, where ``x`` is ``0`` for
+            in the sensor using the ``OSAMx`` command, where ``x`` is ``0`` for
             automatic message transmission disabled and ``1`` for automatic
             message transmission enabled (default: ``True``).
 
-        :return: a new :func:`Measurement` containing the data read
+        :return: a new :func:`Measurement` containing the data read from the
+            sensor
         """
         with self._open_ser():
             if polled_mode is True:
@@ -300,8 +312,20 @@ def retry(
         retries: int,
         exceptions: tuple[type[Exception], ...] = (Exception,),
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """Decorator to retry a function n times when a specific exceptions is
-    raised. If any other exceptions is raised it will not retry.
+    """Decorator to retry a function ``retries`` times when a specific
+    exceptions is raised (defined in ``exceptions``). If any other exception is
+    raised, it will not retry the function.
+
+    It can be used like this: A function is decorated and it is retried a
+    maximum of 10 times when a ``ValueError`` or ``KeyError`` is raised. Every
+    other exception will instantly be raised.
+
+    .. highlight:: python
+    .. code-block:: python
+
+        @retry(retries=10, exceptions=(ValueError, KeyError))
+        def my_func():
+            ...
 
     :param retries: number of times a function is retried
     :param exceptions: the exceptions to except and retry
