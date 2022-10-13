@@ -8,7 +8,7 @@ You can build your own tooling around **vpf-730** extending its functionality.
 
 In this example we provide more custom, non standard options to the {func}`vpf_730.vpf_730.VPF730` class when initializing.
 
-We also disable the poll-mode when calling {func}`vpf_730.vpf_730.VPF730.measure`.
+We also disable the poll-mode when calling {func}`vpf_730.vpf_730.VPF730.measure`, and save the result to a csv file.
 
 ```python
 import time
@@ -24,6 +24,8 @@ vpf730 = VPF730(
 for _ in range(2):
     measurement = vpf730.measure(polled_mode=False)
     print(f'Current precipitation type: {measurement.precipitation_type_msg_readable}')
+    # save to a csv file
+    measurement.to_csv(fname='vpf_730_measurements.csv')
     print('=' * 79)
     time.sleep(2)
 ```
