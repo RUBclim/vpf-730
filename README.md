@@ -1,5 +1,6 @@
 [![CI](https://github.com/RUBclim/vpf-730/actions/workflows/CI.yaml/badge.svg)](https://github.com/RUBclim/vpf-730/actions?query=workflow%3ACI)
-[![pre-commit](https://github.com/RUBclim/vpf-730/actions/workflows/pre-commit.yaml/badge.svg)](https://github.com/RUBclim/vpf-730/actions?query=workflow%3Apre-commit)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/RUBclim/vpf-730/master.svg)](https://results.pre-commit.ci/latest/github/RUBclim/vpf-730/master)
+[![docs](https://github.com/RUBclim/vpf-730/actions/workflows/docs.yaml/badge.svg)](https://github.com/RUBclim/vpf-730/actions/workflows/docs.yaml)
 
 # vpf-730
 
