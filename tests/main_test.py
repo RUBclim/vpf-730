@@ -33,7 +33,7 @@ def test_argparse_from_cli_arguments():
 def test_argparse_from_cli_arguments_config_file(tmpdir):
     with (
         tmpdir.as_cwd(),
-        mock.patch.object(vpf_730.main, 'main_loop') as ml
+        mock.patch.object(vpf_730.main, 'main_loop') as ml,
     ):
         test_cfg = tmpdir.join('test_config.ini')
         test_cfg.write(
