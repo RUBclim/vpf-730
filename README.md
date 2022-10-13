@@ -13,7 +13,7 @@ pip install vpf-730
 
 ## quick start
 
-Make sure your Sensor is connected and find out the port it is connected to. For a detailed documentation please see the [Docs](#).
+Make sure your Sensor is connected and find out the port it is connected to. For a detailed documentation please see the [Docs](https://rubclim.github.io/vpf-730).
 
 ### as a CLI
 

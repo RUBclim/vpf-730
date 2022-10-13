@@ -81,6 +81,7 @@ When running the tool on a server it makes sense to set it up as a `systemd` ser
 
    WorkingDirectory=/home/daten/
 
+   # Environment="VPF730_SENTRY_DSN=https://<PUBLIC_KEY>@<SECRET_KEY>.ingest.sentry.io/<PROJECT_ID>"
    ExecStart=venv/bin/vpf-730 --config config.ini
 
    Restart=on-failure

@@ -10,6 +10,12 @@ To install **vpf-730**, open an interactive shell and run
 pip install vpf-730
 ```
 
+You can also install the [sentry](https://sentry.io) SDK for error monitoring
+
+```console
+pip install vpf-730[sentry]
+```
+
 ### Using vpf-730
 
 **vpf-730** can be used as a standalone CLI tool with limited configuration and features or as a library to build your own tool.

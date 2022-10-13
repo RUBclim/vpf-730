@@ -19,7 +19,7 @@ def mock_vpf():
     with (
         mock.patch.object(Serial, 'write'),
         mock.patch.object(Serial, 'read_until', return_value=TEST_MSG),
-        mock.patch.object(Serial, 'open')
+        mock.patch.object(Serial, 'open'),
     ):
         yield vpf730
 
@@ -102,7 +102,7 @@ def test_vpf_730_measure_empty_msg():
     with (
         mock.patch.object(Serial, 'write'),
         mock.patch.object(Serial, 'read_until', return_value=b''),
-        mock.patch.object(Serial, 'open')
+        mock.patch.object(Serial, 'open'),
     ):
         m = vpf730.measure()
 
@@ -114,7 +114,7 @@ def test_vpf_730_measure_not_polled_mode():
     with (
         mock.patch.object(Serial, 'write') as w,
         mock.patch.object(Serial, 'read_until', return_value=b''),
-        mock.patch.object(Serial, 'open')
+        mock.patch.object(Serial, 'open'),
     ):
         m = vpf730.measure(polled_mode=False)
 
