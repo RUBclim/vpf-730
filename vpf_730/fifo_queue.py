@@ -6,11 +6,14 @@ import sqlite3
 from collections.abc import Generator
 from datetime import datetime
 from datetime import timezone
+from typing import Callable
 from typing import Literal
 from typing import NamedTuple
 from uuid import UUID
 
 from vpf_730.vpf_730 import Measurement
+from vpf_730.worker import Config
+# from vpf_730.worker import TASKS
 
 
 @contextlib.contextmanager
@@ -51,8 +54,7 @@ class Message(NamedTuple):
         ``None``.
     """
     id: UUID
-    # TODO: this should become a callable, serializing: callable.__name__
-    task: str
+    task: Callable[[Message, Config], None]
     blob: Measurement
     retries: int = 0
     eta: int | None = None
@@ -68,7 +70,7 @@ class Message(NamedTuple):
         """
         return {
             'id': self.id.hex,
-            'task': self.task,
+            'task': self.task.__name__,
             'blob': json.dumps(self.blob._asdict()),
             'retries': self.retries,
             'eta': self.eta,
@@ -86,7 +88,7 @@ class Message(NamedTuple):
         """
         return cls(
             id=UUID(msg[0]),
-            task=msg[1],
+            task=TASKS[msg[1]],
             blob=Measurement(**json.loads(msg[2])),
             retries=msg[3],
             eta=msg[4],

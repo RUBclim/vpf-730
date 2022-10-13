@@ -12,10 +12,10 @@ from vpf_730.tasks import save_locally
 from vpf_730.worker import Config
 
 
-def test_post_data(measurement, cfg):
+def test_post_data(measurement, cfg, test_task):
     msg = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        task='test_task',
+        task=test_task,
         blob=measurement,
     )
     with mock.patch.object(urllib.request, 'urlopen') as m:
@@ -49,10 +49,10 @@ def test_post_data(measurement, cfg):
     }
 
 
-def test_post_data_invalid_cfg(measurement):
+def test_post_data_invalid_cfg(measurement, test_task):
     msg = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        task='test_task',
+        task=test_task,
         blob=measurement,
     )
     cfg = Config(
@@ -68,10 +68,10 @@ def test_post_data_invalid_cfg(measurement):
     )
 
 
-def test_save_locally(measurement, cfg):
+def test_save_locally(measurement, cfg, test_task):
     msg = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        task='test_task',
+        task=test_task,
         blob=measurement,
     )
     save_locally(msg, cfg)

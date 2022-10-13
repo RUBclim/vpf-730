@@ -47,12 +47,8 @@ def main_loop(cfg: Config) -> None:
             if now.second == 0:
                 m = _get_measurement(vpf730)
                 if m:
-                    post = Message(id=uuid4(), task=post_data.__name__, blob=m)
-                    local = Message(
-                        id=uuid4(),
-                        task=save_locally.__name__,
-                        blob=m,
-                    )
+                    post = Message(id=uuid4(), task=post_data, blob=m)
+                    local = Message(id=uuid4(), task=save_locally, blob=m)
                     queue.put(local)
                     queue.put(post)
                     # we need to sleep a little, to not accidentally create two

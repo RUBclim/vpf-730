@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from argparse import Namespace
+from typing import Callable
 from unittest import mock
 from uuid import UUID
 
@@ -30,6 +31,7 @@ def test_worker_can_process_messages(
         queue_msg: Queue,
         measurement: Measurement,
         cfg: Config,
+        test_task: Callable[[Message, Config], None],
 ) -> None:
     test_task = mock.Mock(name='test_task')
     with mock.patch.dict(TASKS, {'test_task': test_task}):
@@ -40,7 +42,7 @@ def test_worker_can_process_messages(
 
     assert test_task.call_args.args[0] == Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        task='test_task',
+        task=test_task,
         blob=measurement,
     )
     assert test_task.call_count == 1
@@ -64,11 +66,12 @@ def test_worker_processes_msg_when_interrupted(
         queue_msg: Queue,
         measurement: Measurement,
         cfg: Config,
+        test_task: Callable[[Message, Config], None],
 ) -> None:
     # enqueue a second message
     msg = Message(
         id=UUID('7efed89097764b9d9499a607eab66a64'),
-        task='test_task',
+        task=test_task,
         blob=measurement,
     )
     queue_msg.put(msg)
@@ -85,7 +88,7 @@ def test_worker_processes_msg_when_interrupted(
     # one task (the first one) should have been processed
     assert test_task.call_args.args[0] == Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        task='test_task',
+        task=test_task,
         blob=measurement,
     )
     assert test_task.call_count == 1

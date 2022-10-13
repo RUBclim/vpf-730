@@ -201,7 +201,7 @@ class Worker(threading.Thread):
                     # if the queue is not empty, msg can't be None
                     assert msg is not None
                     try:
-                        call = TASKS[msg.task]
+                        call = TASKS[msg.task.__name__]
                         call(msg, self.cfg)
                         self.queue.task_done(msg)
                     except Exception as e:

@@ -7,6 +7,14 @@ from vpf_730.fifo_queue import Message
 from vpf_730.fifo_queue import Queue
 from vpf_730.vpf_730 import Measurement
 from vpf_730.worker import Config
+from vpf_730.worker import register
+
+
+@pytest.fixture
+def task():
+    # @register
+    def test_task(msg, cfg): pass
+    yield test_task
 
 
 @pytest.fixture
@@ -38,10 +46,10 @@ def queue(tmpdir):
 
 
 @pytest.fixture
-def queue_msg(queue, measurement):
+def queue_msg(queue, measurement, task):
     msg = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        task='test_task',
+        task=task,
         blob=measurement,
     )
     with freeze_time('2022-07-25 14:22:57'):

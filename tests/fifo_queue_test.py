@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Callable
 from unittest import mock
 from uuid import UUID
 from uuid import uuid4
@@ -10,6 +11,7 @@ from vpf_730.fifo_queue import connect
 from vpf_730.fifo_queue import Message
 from vpf_730.fifo_queue import Queue
 from vpf_730.vpf_730 import Measurement
+from vpf_730.worker import Config
 
 
 def test_fifo_queue_no_msg_in_queue(queue: Queue) -> None:
@@ -22,10 +24,11 @@ def test_fifo_queue_no_msg_in_queue(queue: Queue) -> None:
 def test_fifo_queue_put_msg_size_grows(
         queue: Queue,
         measurement: Measurement,
+        task: Callable[[Message, Config], None],
 ) -> None:
     msg = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        task='test_task',
+        task=task,
         blob=measurement,
     )
     queue.put(msg)
@@ -62,11 +65,12 @@ def test_fifo_queue_put_msg_size_grows(
 def test_fifo_queue_msg_availability(
         queue: Queue,
         measurement: Measurement,
+        test_task: Callable[[Message, Config], None],
 ) -> None:
     with freeze_time('2022-09-12 13:03:00'):
         msg = Message(
             id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-            task='test_task',
+            task=test_task,
             blob=measurement,
             retries=0,
             eta=1662988000000,
@@ -94,13 +98,14 @@ def test_fifo_queue_msg_availability(
 def test_fifo_queue_process_msg(
         queue_msg: Queue,
         measurement: Measurement,
+        test_task: Callable[[Message, Config], None],
 ) -> None:
     with freeze_time('2022-07-25 14:25:00'):
         msg = queue_msg.get()
 
     assert msg == Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        task='test_task',
+        task=test_task,
         blob=measurement,
         retries=0,
     )
@@ -185,12 +190,13 @@ def test_fifo_queue_ack_failed_is_retried(
 def test_fifo_queue_ack_failed_is_retried_eta_is_set(
         tmpdir,
         measurement,
+        test_task,
 ):
     db_path = tmpdir.join('test.db').ensure()
     queue = Queue(db_path, exponential_backoff=2, max_retries=3)
     msg = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        task='test_task',
+        task=test_task,
         blob=measurement,
     )
     with freeze_time('2022-09-12 13:49') as ft:
@@ -258,15 +264,19 @@ def test_fifo_queue_ack_failed_retries_exceeded(
     assert val == [('eb8ce9d920ff443b842eaf5f9d6b7486',)]
 
 
-def test_queue_is_fifo(queue: Queue, measurement: Measurement) -> None:
+def test_queue_is_fifo(
+        queue: Queue,
+        measurement: Measurement,
+        test_task: Callable[[Message, Config], None],
+) -> None:
     msg_1 = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7481'),
-        task='test_task',
+        task=test_task,
         blob=measurement,
     )
     msg_2 = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7482'),
-        task='test_task',
+        task=test_task,
         blob=measurement,
     )
 
@@ -287,10 +297,11 @@ def test_queue_is_fifo(queue: Queue, measurement: Measurement) -> None:
 def test_requeue_messages_from_deadletter(
         queue: Queue,
         measurement: Measurement,
+        test_task: Callable[[Message, Config], None],
 ) -> None:
     msg = Message(
         id=UUID('eb8ce9d920ff443b842eaf5f9d6b7486'),
-        task='test_task',
+        task=test_task,
         blob=measurement,
         retries=0,
     )
@@ -312,12 +323,12 @@ def test_requeue_messages_from_deadletter(
     assert val == [(1659102300000, 1659102330000, 0)]
 
 
-def test_prune_queue(tmpdir, measurement):
+def test_prune_queue(tmpdir, measurement, test_task):
     db_path = tmpdir.join('test.db').ensure()
     queue = Queue(db_path, keep_msg=6, prune_interval=3)
     # create messages
     msgs = [
-        Message(id=uuid4(), task='test_task', blob=measurement)
+        Message(id=uuid4(), task=test_task, blob=measurement)
         for _ in range(12)
     ]
     for msg in msgs:
@@ -334,11 +345,11 @@ def test_prune_queue(tmpdir, measurement):
     assert ids_in_db == exp_ids
 
 
-def test_prune_queue_interval(tmpdir, measurement):
+def test_prune_queue_interval(tmpdir, measurement, test_task):
     db_path = tmpdir.join('test.db').ensure()
     queue = Queue(db_path, keep_msg=6, prune_interval=3)
     msgs = [
-        Message(id=uuid4(), task='test_task', blob=measurement)
+        Message(id=uuid4(), task=test_task, blob=measurement)
         for _ in range(6)
     ]
     with mock.patch.object(queue, '_prune', side_effect=queue._prune) as p:
