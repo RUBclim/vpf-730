@@ -202,6 +202,47 @@ class Measurement(NamedTuple):
             total_exco=float(msg_list[16]),
         )
 
+    def to_csv(self, fname: str | None = None, sep: str = ',') -> str | None:
+        """Convert a measurement to a csv formatted string in this format:
+        ``timestamp,sensor_id,last_measurement_period,time_since_report,
+        optical_range,precipitation_type_msg,obstruction_to_vision,
+        receiver_bg_illumination,water_in_precip,temp,nr_precip_particles,
+        transmission_eq,exco_less_precip_particle,backscatter_exco,
+        self_test,total_exco``.
+
+        if ``fname`` is set, write it to a file (using append mode).
+
+        :param fname: optional - a filename to write the data to
+        :param sep: separator to use for the csv, default: ``,``
+
+        :return: a string containing the measurements formatted as csv or
+            ``None`` when written to a file.
+        """
+        csv_str = sep.join(str(i) for i in self)
+        if fname is not None:
+            with open(fname, 'a') as f:
+                # a brand new file, write the header
+                if f.tell() == 0:
+                    f.write(f'{self.csv_header()}\n')
+                f.write(f'{csv_str}\n')
+            return None
+        else:
+            return csv_str
+
+    def csv_header(self, sep: str = ',') -> str:
+        """Create a csv-file header containing all fields in the correct order:
+        ``timestamp,sensor_id,last_measurement_period,time_since_report,
+        optical_range,precipitation_type_msg,obstruction_to_vision,
+        receiver_bg_illumination,water_in_precip,temp,nr_precip_particles,
+        transmission_eq,exco_less_precip_particle,backscatter_exco,
+        self_test,total_exco``
+
+        :param sep: separator to use for the csv, default: ``,``
+
+        :return: a string containing the csv header
+        """
+        return sep.join(self._fields)
+
 
 class VPF730:
     """A class for interacting with the VPF-730 sensor. Please also see the
