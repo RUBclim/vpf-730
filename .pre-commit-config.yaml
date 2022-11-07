@@ -25,7 +25,7 @@ repos:
             -   flake8-ban-utcnow
         args: ["--min-python-version=3.9"]
 -   repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v1.7.0
+    rev: v2.0.0
     hooks:
     -   id: autopep8
 -   repo: https://github.com/theendlessriver13/double-indent
@@ -43,7 +43,7 @@ repos:
     -   id: add-trailing-comma
         args: [--py36-plus]
 -   repo: https://github.com/asottile/pyupgrade
-    rev: v3.1.0
+    rev: v3.2.0
     hooks:
     -   id: pyupgrade
         args: [--py39-plus]
