@@ -30,22 +30,24 @@ def test_post_data(measurement, cfg):
     }
     data = json.loads(req.data)
     assert data == {
-        'timestamp': 1658758977000,
-        'sensor_id': 1,
-        'last_measurement_period': 60,
-        'time_since_report': 0,
-        'optical_range': 1.19,
-        'precipitation_type_msg': 'NP',
-        'obstruction_to_vision': 'HZ',
-        'receiver_bg_illumination': 0.06,
-        'water_in_precip': 0.0,
-        'temp': 20.5,
-        'nr_precip_particles': 0,
-        'transmission_eq': 2.51,
-        'exco_less_precip_particle': 2.51,
-        'backscatter_exco': 11.1,
-        'self_test': 'OOO',
-        'total_exco': 2.51,
+        'data': [{
+            'timestamp': 1658758977000,
+            'sensor_id': 1,
+            'last_measurement_period': 60,
+            'time_since_report': 0,
+            'optical_range': 1.19,
+            'precipitation_type_msg': 'NP',
+            'obstruction_to_vision': 'HZ',
+            'receiver_bg_illumination': 0.06,
+            'water_in_precip': 0.0,
+            'temp': 20.5,
+            'nr_precip_particles': 0,
+            'transmission_eq': 2.51,
+            'exco_less_precip_particle': 2.51,
+            'backscatter_exco': 11.1,
+            'self_test': 'OOO',
+            'total_exco': 2.51,
+        }],
     }
 
 
