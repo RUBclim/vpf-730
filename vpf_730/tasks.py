@@ -25,7 +25,7 @@ def post_data(msg: Message, cfg: Config) -> None:
             'no values for endpoint or api_key provided in the cfg object',
         )
 
-    post_data = json.dumps(msg.blob._asdict()).encode()
+    post_data = json.dumps({'data': [msg.blob._asdict()]}).encode()
     req = urllib.request.Request(cfg.endpoint, data=post_data)
     req.add_header('Authorization', cfg.api_key)
     req.add_header('Content-Type', 'application/json')
