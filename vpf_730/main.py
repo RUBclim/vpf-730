@@ -19,12 +19,17 @@ from vpf_730.vpf_730 import VPF730
 from vpf_730.worker import Config
 from vpf_730.worker import Worker
 
-# VPF730_SENTRY_DSN env var needs to be set for monitoring
+# VPF730_SENTRY_DSN and VPF730_SENTRY_SAMPLE_RATE env var needs to be set for
+# monitoring
 try:
     import sentry_sdk
     sentry_sdk.init(
         dsn=os.environ.get('VPF730_SENTRY_DSN'),
-        traces_sample_rate=1.0,
+        traces_sample_rate=int(
+            os.environ.get(
+                'VPF730_SENTRY_SAMPLE_RATE',
+            ) or 0,
+        ),
     )
 except ImportError:  # pragma: no cover
     pass

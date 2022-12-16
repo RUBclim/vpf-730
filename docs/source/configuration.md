@@ -15,7 +15,7 @@ When using the CLI flag configuration, the API-key still has to be provided via 
 
 ## configuration file
 
-The configuration file is very simple and uses the `.ini` format. The configuration file cannot be used together with environment variables or CLI flags. The `VPF730_SENTRY_DSN` environment variable is an exception.
+The configuration file is very simple and uses the `.ini` format. The configuration file cannot be used together with environment variables or CLI flags. The `VPF730_SENTRY_DSN` and `VPF730_SENTRY_SAMPLE_RATE` environment variables are an exception.
 
 ```{warning}
 When using the configuration file with the `-c`, `--config` option, all other flags are ignored
@@ -41,14 +41,15 @@ chmod 600 config.ini
 
 Configuration via the environment is implicit, so no additional CLI arguments have to be supplied.
 
-| environment variable | description                                                                                                                                                                                  |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VPF730_LOCAL_DB`    | path to the sqlite database to store the measurements locally                                                                                                                                |
-| `VPF730_QUEUE_DB`    | path to the sqlite database to use as a queue                                                                                                                                                |
-| `VPF730_PORT`        | serial port the VPF-730 sensor is connected to                                                                                                                                               |
-| `VPF730_ENDPOINT`    | http endpoint the data should be send to                                                                                                                                                     |
-| `VPF730_API_KEY`     | api key that is used to authenticate to the API endpoint. A header `Authorization: <VPF730_API_KEY>` is set on the `POST` request                                                            |
-| `VPF730_SENTRY_DSN`  | is optional and allows error tracking using [sentry.io](https://sentry.io). You can provide the DSN via this variable e.g. `https://<PUBLIC_KEY>@<SECRET_KEY>.ingest.sentry.io/<PROJECT_ID>` |
+| environment variable        | description                                                                                                                                                                                  |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VPF730_LOCAL_DB`           | path to the sqlite database to store the measurements locally                                                                                                                                |
+| `VPF730_QUEUE_DB`           | path to the sqlite database to use as a queue                                                                                                                                                |
+| `VPF730_PORT`               | serial port the VPF-730 sensor is connected to                                                                                                                                               |
+| `VPF730_ENDPOINT`           | http endpoint the data should be send to                                                                                                                                                     |
+| `VPF730_API_KEY`            | api key that is used to authenticate to the API endpoint. A header `Authorization: <VPF730_API_KEY>` is set on the `POST` request                                                            |
+| `VPF730_SENTRY_DSN`         | is optional and allows error tracking using [sentry.io](https://sentry.io). You can provide the DSN via this variable e.g. `https://<PUBLIC_KEY>@<SECRET_KEY>.ingest.sentry.io/<PROJECT_ID>` |
+| `VPF730_SENTRY_SAMPLE_RATE` | is optional, but must be specified together with `VPF730_SENTRY_SAMPLE_RATE` and sets the sample rate for transactions                                                                       |
 
 ## using systemd
 
@@ -82,6 +83,7 @@ When running the tool on a server it makes sense to set it up as a `systemd` ser
    WorkingDirectory=/home/daten/
 
    # Environment="VPF730_SENTRY_DSN=https://<PUBLIC_KEY>@<SECRET_KEY>.ingest.sentry.io/<PROJECT_ID>"
+   # Environment="VPF730_SENTRY_SAMPLE_RATE=0"
    ExecStart=venv/bin/vpf-730 --config config.ini
 
    Restart=on-failure
