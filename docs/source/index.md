@@ -19,22 +19,27 @@ pip install vpf-730[sentry]
 ### Using vpf-730
 
 **vpf-730** can be used as a standalone CLI tool with limited configuration and features or as a library to build your own tool.
+The tool consists of two parts. A `logger` for communicating and logging the sensor data and a `sender` for sending the data to
+a remote server.
 
-- When using it as a CLI tool see [Configuration](configuration) for detailed usage. Get started with:
+- When using the `logger` as a CLI tool see [Configuration](configuration) for detailed usage. Get started with:
 
   ```bash
-  VPF730_API_KEY=deadbeef \
-  vpf-730 \
-  --local-db local.db \
-  --queue-db queue.db \
-  --serial-port /dev/ttyS0 \
-  --endpoint https://api.example.com
+  vpf-730 logger --serial-port /dev/ttyS0
+  ```
+
+- When using the `sender` as a CLI tool see [Configuration](configuration) for detailed usage. Get started with:
+
+  ```bash
+  VPF730_API_KEY=deadbeef vpf-730 sender \
+  --get-endpoint "https://api.example/com/vpf-730/status" \
+  --post-endpoint "https://api.example/com/vpf-730/data"
   ```
 
 - When building your own tooling see [Package](package) for detailed examples. Get started with:
 
   ```python
-    from vpf_730.vpf_730 import VPF730
+    from vpf_730 import VPF730
 
     vpf730 = VPF730(port='/dev/ttyS1')
     print(vpf730.measure())
@@ -43,7 +48,7 @@ pip install vpf-730[sentry]
 ```{toctree}
 ---
 caption: Contents
-maxdepth: 3
+maxdepth: 2
 ---
 
 configuration.md

@@ -1,63 +1,17 @@
 from __future__ import annotations
 
-import sys
 from collections.abc import Generator
-from collections.abc import ItemsView
-from collections.abc import Iterable
-from collections.abc import Iterator
-from collections.abc import Mapping
 from contextlib import contextmanager
 from datetime import datetime
 from datetime import timezone
-from functools import wraps
 from typing import Any
-from typing import Callable
-from typing import Generic
 from typing import Literal
 from typing import NamedTuple
-from typing import TypeVar
 
 import serial
 
-if sys.version_info >= (3, 10):  # pragma >=3.10 cover
-    from typing import ParamSpec
-else:  # pragma <3.10 cover
-    from typing_extensions import ParamSpec
-
-K = TypeVar('K')
-V = TypeVar('V')
-
-
-class FrozenDict(Generic[K, V]):
-    """Immutable, generic implementation of a frozen dictionary."""
-
-    def __init__(self, d: Mapping[K, V]) -> None:
-        self._d = d
-
-    def __getitem__(self, k: K) -> V:
-        return self._d[k]
-
-    def __contains__(self, k: K) -> bool:
-        return k in self._d
-
-    def __iter__(self) -> Iterator[K]:
-        yield from self._d
-
-    def get(self, k: K) -> V | None:
-        return self._d.get(k)
-
-    def values(self) -> Iterable[V]:
-        return self._d.values()
-
-    def keys(self) -> Iterable[K]:
-        return self._d.keys()
-
-    def items(self) -> ItemsView[K, V]:
-        return self._d.items()
-
-    def __repr__(self) -> str:
-        return f'{type(self).__name__}({self._d})'
-
+from vpf_730.utils import connect
+from vpf_730.utils import FrozenDict
 
 """
 Frozen Dictionary mapping the precipitation types abbreviations to their full
@@ -92,6 +46,28 @@ OBSTRUCTION_TO_VISION = FrozenDict({
     'FU': 'Smoke',
     'BR': 'Mist',
 })
+
+
+MEASUREMENT_TABLE = '''\
+        CREATE TABLE IF NOT EXISTS measurements(
+            timestamp INT PRIMARY KEY,
+            sensor_id INT NOT NULL,
+            last_measurement_period INT,
+            time_since_report INT,
+            optical_range NUMERIC,
+            precipitation_type_msg TEXT,
+            obstruction_to_vision TEXT,
+            receiver_bg_illumination NUMERIC,
+            water_in_precip NUMERIC,
+            temp NUMERIC,
+            nr_precip_particles INT,
+            transmission_eq NUMERIC,
+            exco_less_precip_particle NUMERIC,
+            backscatter_exco NUMERIC,
+            self_test VARCHAR(3),
+            total_exco NUMERIC
+        )
+    '''
 
 
 class Measurement(NamedTuple):
@@ -243,6 +219,55 @@ class Measurement(NamedTuple):
         """
         return sep.join(self._fields)
 
+    def to_db(self, db_path: str) -> None:
+        """Insert the measurement into a sqlite database
+
+        :param db_path: path to the sqlite database
+        """
+        with connect(db_path) as db:
+            db.execute(MEASUREMENT_TABLE)
+            db.execute(
+                '''\
+                INSERT INTO measurements(
+                    timestamp,
+                    sensor_id,
+                    last_measurement_period,
+                    time_since_report,
+                    optical_range,
+                    precipitation_type_msg,
+                    obstruction_to_vision,
+                    receiver_bg_illumination,
+                    water_in_precip,
+                    temp,
+                    nr_precip_particles,
+                    transmission_eq,
+                    exco_less_precip_particle,
+                    backscatter_exco,
+                    self_test,
+                    total_exco
+                )
+                VALUES (
+                    :timestamp,
+                    :sensor_id,
+                    :last_measurement_period,
+                    :time_since_report,
+                    :optical_range,
+                    :precipitation_type_msg,
+                    :obstruction_to_vision,
+                    :receiver_bg_illumination,
+                    :water_in_precip,
+                    :temp,
+                    :nr_precip_particles,
+                    :transmission_eq,
+                    :exco_less_precip_particle,
+                    :backscatter_exco,
+                    :self_test,
+                    :total_exco
+                )
+                ''',
+                self._asdict(),
+            )
+
 
 class VPF730:
     """A class for interacting with the VPF-730 sensor. Please also see the
@@ -313,7 +338,7 @@ class VPF730:
         self._ser.exclusive = self.exclusive
 
     @contextmanager
-    def _open_ser(self) -> Generator[None, None, None]:
+    def open_ser(self) -> Generator[None, None, None]:
         """Context manager for opening and closing the serial port"""
         try:
             self._ser.open()
@@ -334,7 +359,7 @@ class VPF730:
         :return: a new :func:`Measurement` containing the data read from the
             sensor
         """
-        with self._open_ser():
+        with self.open_ser():
             if polled_mode is True:
                 self._ser.write(b'D?\r\n')
 
@@ -343,45 +368,3 @@ class VPF730:
                 return Measurement.from_msg(msg)
             else:
                 return None
-
-
-P = ParamSpec('P')
-R = TypeVar('R')
-
-
-def retry(
-        retries: int,
-        exceptions: tuple[type[Exception], ...] = (Exception,),
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """Decorator to retry a function ``retries`` times when a specific
-    exceptions is raised (defined in ``exceptions``). If any other exception is
-    raised, it will not retry the function.
-
-    It can be used like this: A function is decorated and it is retried a
-    maximum of 10 times when a ``ValueError`` or ``KeyError`` is raised. Every
-    other exception will instantly be raised.
-
-    .. highlight:: python
-    .. code-block:: python
-
-        @retry(retries=10, exceptions=(ValueError, KeyError))
-        def my_func():
-            ...
-
-    :param retries: number of times a function is retried
-    :param exceptions: the exceptions to except and retry
-    """
-    def retry_dec(f: Callable[P, R]) -> Callable[P, R]:
-        @wraps(f)
-        def inner(*args: P.args, **kwargs: P.kwargs) -> R:
-            curr_tries = 0
-            while True:
-                try:
-                    return f(*args, **kwargs)
-                except exceptions:
-                    if curr_tries >= retries:
-                        raise
-                    curr_tries += 1
-
-        return inner
-    return retry_dec

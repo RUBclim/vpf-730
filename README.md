@@ -16,21 +16,30 @@ pip install vpf-730
 
 Make sure your Sensor is connected and find out the port it is connected to. For a detailed documentation please see the [Docs](https://rubclim.github.io/vpf-730).
 
-### as a CLI
+**Versions > `0.5.0` contain a full rewrite with lots of breaking changes**
+
+### `logger` as a CLI
+
+The logger: Communication and continuous data logging
 
 ```bash
-VPF730_API_KEY=deadbeef \
-vpf-730 \
---local-db local.db \
---queue-db queue.db \
---serial-port /dev/ttyS0 \
---endpoint https://api.example.com
+vpf-730 logger --serial-port /dev/ttyS0
+```
+
+### `sender` as a CLI
+
+The sender: Sending data to a remote server
+
+```bash
+VPF730_API_KEY=deadbeef vpf-730 sender \
+--get-endpoint "https://api.example/com/vpf-730/status" \
+--post-endpoint "https://api.example/com/vpf-730/data"
 ```
 
 ### as a package
 
 ```python
-from vpf_730.vpf_730 import VPF730
+from vpf_730 import VPF730
 
 vpf730 = VPF730(port='/dev/ttyS1')
 print(vpf730.measure())
