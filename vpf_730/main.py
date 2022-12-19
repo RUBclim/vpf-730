@@ -10,7 +10,7 @@ from vpf_730.logger import LoggerConfig
 from vpf_730.sender import Sender
 from vpf_730.sender import SenderConfig
 
-# VPF730_SENTRY_DSN and VPF730_SENTRY_SAMPLE_RATE env var needs to be set for
+# VPF730_SENTRY_DSN and VPF730_SENTRY_SAMPLE_RATE env var need to be set for
 # monitoring
 try:
     import sentry_sdk

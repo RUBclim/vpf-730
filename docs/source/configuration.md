@@ -55,7 +55,7 @@ Configuration via the environment is implicit, so no additional CLI arguments ha
 | `VPF730_MAX_REQ_LEN`        | the maximum number of measurements that are allowed to be send in a single request                                                                                                           |
 | `VPF730_API_KEY`            | api key that is used to authenticate to the API endpoint. A header `Authorization: <VPF730_API_KEY>` is set on the `POST` request                                                            |
 | `VPF730_SENTRY_DSN`         | is optional and allows error tracking using [sentry.io](https://sentry.io). You can provide the DSN via this variable e.g. `https://<PUBLIC_KEY>@<SECRET_KEY>.ingest.sentry.io/<PROJECT_ID>` |
-| `VPF730_SENTRY_SAMPLE_RATE` | is optional, but must be specified together with `VPF730_SENTRY_SAMPLE_RATE` and sets the sample rate for transactions                                                                       |
+| `VPF730_SENTRY_SAMPLE_RATE` | is optional, and sets the sample rate for transactions, if `VPF730_SENTRY_DSN` is set, but `VPF730_SENTRY_SAMPLE_RATE` is not, the `traces_sample_rate` is set o `0`                         |
 
 ## using systemd
 
@@ -172,7 +172,7 @@ This shows the setup for a Debian based distribution.
 1. the systemd status should now display the service as **active (running)**
 
    ```console
-   sudo systemctl status vpf-730-sebder
+   sudo systemctl status vpf-730-sender
    ```
 
 1. you can check for error using the journal

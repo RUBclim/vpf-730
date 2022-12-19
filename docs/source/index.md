@@ -1,5 +1,14 @@
 # Welcome to vpf-730's documentation!
 
+The `vpf-730` package allows communication with the [Biral VPF-730](https://www.biral.com/product/vpf-730-visibility-present-weather-sensor/#product-overview)
+Present weather sensor. The package implements a `logger` allowing to continuously
+log data from the sensor and store it in a local database and a `sender`
+allowing to send data to a remote server via http requests.
+
+```{image} ../source/img/pws.jpg
+:align: center
+```
+
 ## Quickstart
 
 ### Installation
