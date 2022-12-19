@@ -4,24 +4,10 @@ import pytest
 from freezegun import freeze_time
 from serial import Serial
 
-from vpf_730.vpf_730 import FrozenDict
-from vpf_730.vpf_730 import Measurement
-from vpf_730.vpf_730 import retry
-from vpf_730.vpf_730 import VPF730
-
-
-TEST_MSG = b'PW01,0060,0000,001.19 KM,NP ,HZ,00.06,00.0000,+020.5 C,0000,002.51,002.51,+011.10,  0000,000,OOO,002.51'  # noqa: E501
-
-
-@pytest.fixture
-def mock_vpf():
-    vpf730 = VPF730(port='/dev/ttyUSB0')
-    with (
-        mock.patch.object(Serial, 'write'),
-        mock.patch.object(Serial, 'read_until', return_value=TEST_MSG),
-        mock.patch.object(Serial, 'open'),
-    ):
-        yield vpf730
+from vpf_730 import Measurement
+from vpf_730 import VPF730
+from vpf_730.utils import FrozenDict
+from vpf_730.utils import retry
 
 
 def test_measurement_from_msg_precip_type_invalid():
@@ -52,8 +38,8 @@ def test_measurement_from_msg_obstruction_invalid():
         ('DZ+', 'Heavy drizzle'),
     ),
 )
-def test_measurement_to_readable_precip_type(abbrev, readable):
-    m = Measurement.from_msg(TEST_MSG)._asdict()
+def test_measurement_to_readable_precip_type(test_msg, abbrev, readable):
+    m = Measurement.from_msg(test_msg)._asdict()
     m['precipitation_type_msg'] = abbrev
     modified_m = Measurement(**m)
     assert modified_m.precipitation_type_msg_readable == readable
@@ -67,23 +53,23 @@ def test_measurement_to_readable_precip_type(abbrev, readable):
         ('FG', 'Fog'),
     ),
 )
-def test_measurement_to_readable_obstruction(abbrev, readable):
-    m = Measurement.from_msg(TEST_MSG)._asdict()
+def test_measurement_to_readable_obstruction(test_msg, abbrev, readable):
+    m = Measurement.from_msg(test_msg)._asdict()
     m['obstruction_to_vision'] = abbrev
     modified_m = Measurement(**m)
     assert modified_m.obstruction_to_vision_readable == readable
 
 
 @freeze_time('2022-07-25 14:22:57')
-def test_measurement_to_csv_str():
-    m = Measurement.from_msg(TEST_MSG)
+def test_measurement_to_csv_str(test_msg):
+    m = Measurement.from_msg(test_msg)
     assert m.to_csv() == '1658758977000,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51'  # noqa: E501
 
 
 @freeze_time('2022-07-25 14:22:57')
-def test_measurement_to_csv_file_new_file(tmpdir):
+def test_measurement_to_csv_file_new_file(test_msg, tmpdir):
     with tmpdir.as_cwd():
-        m = Measurement.from_msg(TEST_MSG)
+        m = Measurement.from_msg(test_msg)
         assert m.to_csv('test.csv') is None
 
         with open('test.csv') as f:
@@ -96,9 +82,9 @@ timestamp,sensor_id,last_measurement_period,time_since_report,optical_range,prec
 
 
 @freeze_time('2022-07-25 14:22:57')
-def test_measurement_to_csv_file_already_exists(tmpdir):
+def test_measurement_to_csv_file_already_exists(test_msg, tmpdir):
     with tmpdir.as_cwd():
-        m = Measurement.from_msg(TEST_MSG)
+        m = Measurement.from_msg(test_msg)
         with open('test.csv', 'w') as f:
             f.write('1st line\n')
 
