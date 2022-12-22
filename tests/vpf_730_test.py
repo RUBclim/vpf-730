@@ -63,7 +63,7 @@ def test_measurement_to_readable_obstruction(test_msg, abbrev, readable):
 @freeze_time('2022-07-25 14:22:57')
 def test_measurement_to_csv_str(test_msg):
     m = Measurement.from_msg(test_msg)
-    assert m.to_csv() == '1658758977000,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51'  # noqa: E501
+    assert m.to_csv() == '1658758977,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51'  # noqa: E501
 
 
 @freeze_time('2022-07-25 14:22:57')
@@ -77,7 +77,7 @@ def test_measurement_to_csv_file_new_file(test_msg, tmpdir):
 
         assert data == '''\
 timestamp,sensor_id,last_measurement_period,time_since_report,optical_range,precipitation_type_msg,obstruction_to_vision,receiver_bg_illumination,water_in_precip,temp,nr_precip_particles,transmission_eq,exco_less_precip_particle,backscatter_exco,self_test,total_exco
-1658758977000,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51
+1658758977,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51
 '''
 
 
@@ -95,7 +95,7 @@ def test_measurement_to_csv_file_already_exists(test_msg, tmpdir):
 
         assert data == '''\
 1st line
-1658758977000,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51
+1658758977,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51
 '''
 
 
@@ -103,7 +103,7 @@ def test_measurement_to_csv_file_already_exists(test_msg, tmpdir):
 def test_vpf_730_measure(mock_vpf):
     m = mock_vpf.measure()
     assert m == Measurement(
-        timestamp=1658758977000,
+        timestamp=1658758977,
         sensor_id=1,
         last_measurement_period=60,
         time_since_report=0,

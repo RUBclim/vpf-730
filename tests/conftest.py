@@ -12,7 +12,7 @@ from vpf_730.vpf_730 import MEASUREMENT_TABLE
 @pytest.fixture
 def measurement():
     return Measurement(
-        timestamp=1658758977000,
+        timestamp=1658758977,
         sensor_id=1,
         last_measurement_period=60,
         time_since_report=0,
@@ -53,7 +53,7 @@ def test_db(tmpdir):
     with connect(db_path) as db:
         db.execute(MEASUREMENT_TABLE)
 
-    timestamps = (1658758977000, 1658758978000)
+    timestamps = (1658758977, 1658758978)
     for t in timestamps:
         Measurement(
             timestamp=t,
@@ -84,7 +84,7 @@ def test_db_many_records(tmpdir):
         db.execute(MEASUREMENT_TABLE)
 
     # insert 6 measurements into the db
-    for t in range(1658758977000, 1658759337000, 60000):
+    for t in range(1658758977, 1658759337, 60):
         Measurement(
             timestamp=t,
             sensor_id=1,

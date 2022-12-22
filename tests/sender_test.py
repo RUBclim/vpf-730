@@ -112,11 +112,11 @@ def test_sender_get_remote_timestamp():
     )
     sender = Sender(cfg=cfg)
     ret = mock.MagicMock()
-    ret.read.return_value = b'{"latest_date": 1671404640000}'
+    ret.read.return_value = b'{"latest_date": 1671404640}'
     with mock.patch.object(urllib.request, 'urlopen', return_value=ret) as m:
         ts = sender.get_remote_timestamp()
 
-    assert ts == 1671404640000
+    assert ts == 1671404640
     req, = m.call_args.args
     assert req.headers == {
         'Authorization': 'deadbeef',
@@ -144,7 +144,7 @@ def test_sender_post_data_to_remote_single_measurement(measurement, exp_len):
         'Content-type': 'application/json',
     }
     assert len(json.loads(req.data)['data']) == exp_len
-    assert b'{"data": [[1658758977000, 1, 60, 0, 1.19, "NP"' in req.data
+    assert b'{"data": [[1658758977, 1, 60, 0, 1.19, "NP"' in req.data
 
 
 def test_sender_get_data_from_db_no_data_available(test_db):
@@ -157,7 +157,7 @@ def test_sender_get_data_from_db_no_data_available(test_db):
         api_key='deadbeef',
     )
     sender = Sender(cfg=cfg)
-    assert sender.get_data_from_db(start=1658758978000) == []
+    assert sender.get_data_from_db(start=1658758978) == []
 
 
 def test_sender_get_data_from_db_one_record(test_db):
@@ -170,8 +170,8 @@ def test_sender_get_data_from_db_one_record(test_db):
         api_key='deadbeef',
     )
     sender = Sender(cfg=cfg)
-    assert sender.get_data_from_db(start=1658758977000) == [{
-        'timestamp': 1658758978000,
+    assert sender.get_data_from_db(start=1658758977) == [{
+        'timestamp': 1658758978,
         'sensor_id': 1,
         'last_measurement_period': 60,
         'time_since_report': 0,
@@ -201,7 +201,7 @@ def test_sender_running_no_data_to_send(test_db):
         api_key='deadbeef',
     )
     ret = mock.MagicMock()
-    ret.read.return_value = b'{"latest_date": 1658758979000}'
+    ret.read.return_value = b'{"latest_date": 1658758979}'
     with (
         mock.patch.object(urllib.request, 'urlopen', return_value=ret) as m,
         mock.patch(
@@ -229,7 +229,7 @@ def test_sender_running_data_fits_one_req(test_db):
         api_key='deadbeef',
     )
     ret = mock.MagicMock()
-    ret.read.return_value = b'{"latest_date": 1658758976000}'
+    ret.read.return_value = b'{"latest_date": 1658758976}'
     with (
         mock.patch.object(urllib.request, 'urlopen', return_value=ret) as m,
         mock.patch(
@@ -248,7 +248,7 @@ def test_sender_running_data_fits_one_req(test_db):
     assert post_req.full_url == 'https://api.example/com/vpf-730/i'
     data = json.loads(post_req.data)['data']
     assert len(data) == 2
-    assert [i['timestamp'] for i in data] == [1658758977000, 1658758978000]
+    assert [i['timestamp'] for i in data] == [1658758977, 1658758978]
 
 
 @freeze_time('2022-12-18 22:55:00')
@@ -262,7 +262,7 @@ def test_sender_running_data_fits_multiple_requests_only(test_db_many_records):
         api_key='deadbeef',
     )
     ret = mock.MagicMock()
-    ret.read.return_value = b'{"latest_date": 1658758976000}'
+    ret.read.return_value = b'{"latest_date": 1658758976}'
     with (
         mock.patch.object(urllib.request, 'urlopen', return_value=ret) as m,
         mock.patch(
@@ -280,10 +280,10 @@ def test_sender_running_data_fits_multiple_requests_only(test_db_many_records):
     assert get_req.full_url == 'https://api.example/com/vpf-730/s'
 
     assert [t['timestamp'] for t in json.loads(p[0].args[0].data)['data']] == [
-        1658758977000, 1658759037000, 1658759097000, 1658759157000,
+        1658758977, 1658759037, 1658759097, 1658759157,
     ]
     assert [t['timestamp'] for t in json.loads(p[1].args[0].data)['data']] == [
-        1658759217000, 1658759277000,
+        1658759217, 1658759277,
     ]
 
 
@@ -301,7 +301,7 @@ def test_sender_running_only_sent_when_minute_matches(
     # first one must not match, second one should match
     with freeze_time('2022-12-18 22:56:00', auto_tick_seconds=4 * 60):
         ret = mock.MagicMock()
-        ret.read.return_value = b'{"latest_date": 1658758976000}'
+        ret.read.return_value = b'{"latest_date": 1658758976}'
         with (
             mock.patch.object(urllib.request, 'urlopen', return_value=ret) as m,  # noqa: E501
             mock.patch(
@@ -319,8 +319,8 @@ def test_sender_running_only_sent_when_minute_matches(
     assert get_req.full_url == 'https://api.example/com/vpf-730/s'
 
     assert [t['timestamp'] for t in json.loads(p[0].args[0].data)['data']] == [
-        1658758977000, 1658759037000, 1658759097000,
+        1658758977, 1658759037, 1658759097,
     ]
     assert [t['timestamp'] for t in json.loads(p[1].args[0].data)['data']] == [
-        1658759157000, 1658759217000, 1658759277000,
+        1658759157, 1658759217, 1658759277,
     ]
