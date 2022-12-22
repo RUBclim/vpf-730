@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
+import sys
 from argparse import RawDescriptionHelpFormatter
 from collections.abc import Sequence
 
@@ -21,6 +23,12 @@ try:
     )
 except ImportError:  # pragma: no cover
     pass
+
+loglevel = os.environ.get('VPF_730_LOGLEVEL', logging.ERROR)
+logger = logging.getLogger(__name__)
+logger.setLevel(loglevel)
+hdlr = logging.StreamHandler(sys.stdout)
+logger.addHandler(hdlr)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -166,10 +174,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         vpf_logger = Logger(cfg=logger_cfg)
         try:
-            print(f'=> starting logger with configuration: {logger_cfg}')
+            logger.info('starting logger with configuration: %s', logger_cfg)
             vpf_logger.run()
         except KeyboardInterrupt:
-            print('logger received shutdown signal...')
+            logger.info('logger received shutdown signal...')
             vpf_logger.logging = False
             return 0
 
@@ -191,10 +199,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         sender = Sender(cfg=sender_cfg)
         try:
-            print(f'=> starting sender with configuration: {sender_cfg}')
+            logger.info('starting sender with configuration: %s', sender_cfg)
             sender.run()
         except KeyboardInterrupt:
-            print('sender received shutdown signal...')
+            logger.info('sender received shutdown signal...')
             sender.sending = False
             return 0
 
