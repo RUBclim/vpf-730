@@ -3,8 +3,10 @@ from __future__ import annotations
 import argparse
 import configparser
 import json
+import logging
 import os
 import time
+import urllib.error
 import urllib.request
 from datetime import datetime
 from datetime import timezone
@@ -12,6 +14,8 @@ from typing import NamedTuple
 from typing import TypedDict
 
 from vpf_730.utils import connect
+
+logger = logging.getLogger(__name__)
 
 
 class SenderConfig(NamedTuple):
@@ -193,9 +197,14 @@ class Sender:
                 'Content-type': 'application/json',
             },
         )
-        status_resp = urllib.request.urlopen(status_req)
-        status_resp_str = status_resp.read().decode()
-        return json.loads(status_resp_str)['latest_date']
+        try:
+            status_resp = urllib.request.urlopen(status_req)
+            status_resp_str = status_resp.read().decode()
+            return json.loads(status_resp_str)['latest_date']
+        except urllib.error.HTTPError as e:
+            msg = json.loads(e.read().decode())
+            logger.exception('http error getting latest date: %s', msg)
+            raise
 
     def post_data_to_remote(self, data: list[MeasurementDict]) -> None:
         post_data = json.dumps({'data': data}).encode()
@@ -207,7 +216,12 @@ class Sender:
                 'Content-type': 'application/json',
             },
         )
-        urllib.request.urlopen(req)
+        try:
+            urllib.request.urlopen(req)
+        except urllib.error.HTTPError as e:
+            msg = json.loads(e.read().decode())
+            logger.exception('http error sending date: %s', msg)
+            raise
 
     def get_data_from_db(self, start: int) -> list[MeasurementDict]:
         """Get data from the db starting after ``start``

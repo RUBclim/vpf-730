@@ -1,7 +1,10 @@
 import json
 import os
+import urllib.error
 import urllib.request
 from argparse import Namespace
+from email.message import Message
+from io import BytesIO
 from unittest import mock
 
 import pytest
@@ -124,6 +127,35 @@ def test_sender_get_remote_timestamp():
     }
 
 
+def test_sender_get_remote_timestamp_error_is_logged_json(caplog):
+    cfg = SenderConfig(
+        local_db='local.db',
+        send_interval=5,
+        get_endpoint='https://api.example/com/vpf-730/s',
+        post_endpoint='https://api.example/com/vpf-730/i',
+        max_req_len=256,
+        api_key='deadbeef',
+    )
+    sender = Sender(cfg=cfg)
+    mock_error = urllib.error.HTTPError(
+        url=cfg.get_endpoint,
+        code=400,
+        msg='INTERNAL SERVER ERROR',
+        hdrs=Message(),
+        fp=BytesIO(b'{"code": 500, "message": "server error"}'),
+    )
+    with (
+        pytest.raises(urllib.error.HTTPError),
+        mock.patch.object(urllib.request, 'urlopen', side_effect=mock_error),
+    ):
+        sender.post_data_to_remote(data=[])
+
+    log_msg, = caplog.messages
+    assert log_msg == (
+        "http error sending date: {'code': 500, 'message': 'server error'}"
+    )
+
+
 @pytest.mark.parametrize('exp_len', (1, 2))
 def test_sender_post_data_to_remote_single_measurement(measurement, exp_len):
     cfg = SenderConfig(
@@ -145,6 +177,39 @@ def test_sender_post_data_to_remote_single_measurement(measurement, exp_len):
     }
     assert len(json.loads(req.data)['data']) == exp_len
     assert b'{"data": [[1658758977, 1, 60, 0, 1.19, "NP"' in req.data
+
+
+def test_sender_post_data_to_remote_http_error_is_logged(caplog):
+    cfg = SenderConfig(
+        local_db='local.db',
+        send_interval=5,
+        get_endpoint='https://api.example/com/vpf-730/s',
+        post_endpoint='https://api.example/com/vpf-730/i',
+        max_req_len=256,
+        api_key='deadbeef',
+    )
+    sender = Sender(cfg=cfg)
+    mock_error = urllib.error.HTTPError(
+        url=cfg.get_endpoint,
+        code=400,
+        msg='BAD REQUEST',
+        hdrs=Message(),
+        fp=BytesIO(
+            b'{"code": 400, "message": '
+            b'"measurement already present, timestamp: 1671404640"}',
+        ),
+    )
+    with (
+        pytest.raises(urllib.error.HTTPError),
+        mock.patch.object(urllib.request, 'urlopen', side_effect=mock_error),
+    ):
+        sender.get_remote_timestamp()
+
+    log_msg, = caplog.messages
+    assert log_msg == (
+        "http error getting latest date: {'code': 400, 'message': "
+        "'measurement already present, timestamp: 1671404640'}"
+    )
 
 
 def test_sender_get_data_from_db_no_data_available(test_db):
