@@ -57,7 +57,7 @@ Configuration via the environment is implicit, so no additional CLI arguments ha
 | `VPF730_API_KEY`            | api key that is used to authenticate to the API endpoint. A header `Authorization: <VPF730_API_KEY>` is set on the `POST` request                                                            |
 | `VPF730_SENTRY_DSN`         | is optional and allows error tracking using [sentry.io](https://sentry.io). You can provide the DSN via this variable e.g. `https://<PUBLIC_KEY>@<SECRET_KEY>.ingest.sentry.io/<PROJECT_ID>` |
 | `VPF730_SENTRY_SAMPLE_RATE` | is optional, and sets the sample rate for transactions, if `VPF730_SENTRY_DSN` is set, but `VPF730_SENTRY_SAMPLE_RATE` is not, the `traces_sample_rate` is set o `0`                         |
-| `VPF_730_LOGLEVEL`          | this sets the log level, if not set it defaults to `ERROR`. Possible options are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`                                                             |
+| `VPF730_LOGLEVEL`          | this sets the log level, if not set it defaults to `ERROR`. Possible options are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`                                                             |
 
 ## using systemd
 

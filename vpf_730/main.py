@@ -24,7 +24,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-loglevel = os.environ.get('VPF_730_LOGLEVEL', logging.ERROR)
+loglevel = os.environ.get('VPF730_LOGLEVEL', logging.ERROR)
 logger = logging.getLogger(__name__)
 logger.setLevel(loglevel)
 hdlr = logging.StreamHandler(sys.stdout)
