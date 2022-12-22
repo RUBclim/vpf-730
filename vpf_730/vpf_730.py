@@ -158,7 +158,7 @@ class Measurement(NamedTuple):
             )
 
         return cls(
-            timestamp=int(datetime.now(timezone.utc).timestamp() * 1000),
+            timestamp=int(datetime.now(timezone.utc).timestamp()),
             # strip the message header
             sensor_id=int(msg_list[0].lstrip('PW')),
             last_measurement_period=int(msg_list[1]),

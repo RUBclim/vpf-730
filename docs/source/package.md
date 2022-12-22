@@ -43,8 +43,8 @@ Current precipitation type: No precipitation
 
 ```
 timestamp,sensor_id,last_measurement_period,time_since_report,optical_range,precipitation_type_msg,obstruction_to_vision,receiver_bg_illumination,water_in_precip,temp,nr_precip_particles,transmission_eq,exco_less_precip_particle,backscatter_exco,self_test,total_exco
-1658758977000,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51
-1658757779000,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51
+1658758977,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51
+1658757779,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51
 ```
 
 ### Adding additional functionality
@@ -99,11 +99,11 @@ The response looks like this and we can parse it to extract the timestamps and g
 {
   "data": [
     {
-      "date": 1658758977000,
+      "date": 1658758977,
       "optical_range": 1.19
     },
     {
-      "date": 1658757779000,
+      "date": 1658757779,
       "optical_range": 1.19
     }
   ]

@@ -124,5 +124,5 @@ def test_logger_running_only_logged_when_minute_matches(
     # we expect the timestamp to be 23:04, since check now in the logger
     # consumed one tick, and then setting the measurement date consumes another
     # one
-    expected['timestamp'] = 1671404640000
+    expected['timestamp'] = 1671404640
     assert Measurement(**dict(val)) == Measurement(**expected)
