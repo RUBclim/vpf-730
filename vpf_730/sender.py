@@ -171,7 +171,7 @@ class Sender:
                 # we don't exceed the max_req_len and can send the data as one
                 if len(data) <= self.cfg.max_req_len:
                     self.post_data_to_remote(data=data)
-                    return
+                    continue
 
                 counter = 0
                 post_stack: list[MeasurementDict] = []
