@@ -235,3 +235,53 @@ api_key=cafecafe
         api_key='cafecafe',
     )
     sender.assert_called_once_with(cfg=exp_sender_cfg)
+
+
+SELF_TEST_RET = b'100,2.509,24.1,12.3,5.01,12.5,00.00,00.00,100,105,107,00,00,00,+021.0,4063'  # noqa: E501
+
+
+def test_main_comm_from_cli_args(capsys):
+    ret = mock.MagicMock()
+    ret.send_command.return_value = SELF_TEST_RET
+    with mock.patch.object(vpf_730.main, 'VPF730', return_value=ret) as vpf:
+        main(['comm', '--serial-port', '/dev/ttyS0', 'R?'])
+
+    out, _ = capsys.readouterr()
+    assert out == '100,2.509,24.1,12.3,5.01,12.5,00.00,00.00,100,105,107,00,00,00,+021.0,4063\n'  # noqa: E501
+    vpf.assert_called_once_with(port='/dev/ttyS0')
+
+
+def test_main_comm_from_env(capsys):
+    with (
+        mock.patch.dict(os.environ, {'VPF730_PORT': '/dev/USB0'}),
+        mock.patch.object(
+            vpf_730.main.VPF730, 'send_command',
+            return_value=SELF_TEST_RET,
+        ) as cmd,
+    ):
+        main(['comm', 'R?'])
+
+    out, _ = capsys.readouterr()
+    assert out == '100,2.509,24.1,12.3,5.01,12.5,00.00,00.00,100,105,107,00,00,00,+021.0,4063\n'  # noqa: E501
+    cmd.assert_called_once_with('R?')
+
+
+def test_main_comm_from_file(tmpdir, capsys):
+    ret = mock.MagicMock()
+    ret.send_command.return_value = SELF_TEST_RET
+    with (
+        tmpdir.as_cwd(),
+        mock.patch.object(vpf_730.main, 'VPF730', return_value=ret) as vpf,
+    ):
+        test_cfg = tmpdir.join('test_config.ini')
+        test_cfg.write(
+            '''\
+[vpf_730]
+serial_port=/dev/ttyS0
+''',
+        )
+        main(['comm', 'R?', '--config', 'test_config.ini'])
+
+    out, _ = capsys.readouterr()
+    assert out == '100,2.509,24.1,12.3,5.01,12.5,00.00,00.00,100,105,107,00,00,00,+021.0,4063\n'  # noqa: E501
+    vpf.assert_called_once_with(port='/dev/ttyS0')
