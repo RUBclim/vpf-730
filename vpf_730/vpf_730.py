@@ -347,7 +347,9 @@ class VPF730:
             self._ser.close()
 
     def send_command(self, command: str) -> bytes:
-        """Send an ASCII command to the VPF-730
+        """Send an ASCII command to the VPF-730. A detailed description can be
+        found in the Biral VPF-XXX Manual starting on page 59:
+        https://www.biral.com/wp-content/uploads/2019/07/VPF-710-730-750-Manual-102186.08E.pdf
 
         :param command: A valid command e.g: ``D?``
 

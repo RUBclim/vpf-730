@@ -36,6 +36,20 @@ VPF730_API_KEY=deadbeef vpf-730 sender \
 --post-endpoint "https://api.example/com/vpf-730/data"
 ```
 
+## `comm` CLI
+
+It is also possible to manually send `ASCII` commands to the sensor. `\r\n` must not be specified
+
+```bash
+vpf-730 comm --serial-port /dev/ttyUSB0 R?
+```
+
+Returns:
+
+```console
+ 200,2.515,16.5,12.2,5.00,12.3,00.00,00.00,101,086,000,02,03,00,+001.9,4040
+```
+
 ### as a package
 
 ```python
