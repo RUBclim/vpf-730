@@ -69,9 +69,27 @@ class VPF730_extended(VPF730):
             now = datetime.now(timezone.utc)
         else:
             now = custom_time
-        with self._open_ser():
+        with self.open_ser():
             self._ser.write(f'%SD{now:%w%d%m%y}\r\n'.encode())
             self._ser.write(f'%ST{now:%H%M%S}\r\n'.encode())
+```
+
+We can also utilize the {func}`vpf_730.VPF730.send_command` method for using other commands.
+
+```python
+from vpf_730 import VPF730
+
+
+class VPF730_extended(VPF730):
+    def self_test(self) -> str:
+        """Execute a self test of the sensor by sending the R? command
+
+        :returns: A message formatted like this (more in the manual page 60):
+            100,2.509,24.1,12.3,5.01,12.5,00.00,00.00,100,105,107,00,00,00,+021.0,4063
+        """
+        with self.open_ser():
+            self_test_msg = self.send_command('R?')
+        return self_test_msg.decode()
 ```
 
 ## The Sender class

@@ -147,6 +147,20 @@ def test_vpf_730_measure_not_polled_mode():
     assert m is None
 
 
+def test_vpf_730_send_command():
+    vpf730 = VPF730(port='/dev/ttyUSB0')
+    self_test_ret = b'100,2.509,24.1,12.3,5.01,12.5,00.00,00.00,100,105,107,00,00,00,+021.0,4063'  # noqa: E501
+    with (
+        mock.patch.object(Serial, 'write') as w,
+        mock.patch.object(Serial, 'read_until', return_value=self_test_ret),
+        mock.patch.object(Serial, 'open'),
+    ):
+        m = vpf730.send_command('R?')
+
+    w.assert_called_once_with(b'R?\r\n')
+    assert m == self_test_ret
+
+
 def test_fdict():
     fdict = FrozenDict({'test': 123})
     assert fdict['test'] == 123

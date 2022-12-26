@@ -45,6 +45,14 @@ a remote server.
   --post-endpoint "https://api.example/com/vpf-730/data"
   ```
 
+- When using the `comm` interface to manually send `ASCII` commands to the Sensor.
+  Information about the available commands can be found in the [Biral VPF-730 Manual](https://www.biral.com/wp-content/uploads/2019/07/VPF-710-730-750-Manual-102186.08E.pdf)
+  starting on page 56. Get started with a remote self-test and monitoring message `R?`:
+
+  ```bash
+  vpf-730 comm --serial-port /dev/ttyUSB0 R?
+  ```
+
 - When building your own tooling see [Package](package) for detailed examples. Get started with:
 
   ```python

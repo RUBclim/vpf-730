@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import configparser
 import logging
 import os
 import sys
@@ -11,6 +12,7 @@ from vpf_730.logger import Logger
 from vpf_730.logger import LoggerConfig
 from vpf_730.sender import Sender
 from vpf_730.sender import SenderConfig
+from vpf_730.vpf_730 import VPF730
 
 # VPF730_SENTRY_DSN and VPF730_SENTRY_SAMPLE_RATE env var need to be set for
 # monitoring
@@ -39,6 +41,36 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(
         dest='command',
         help='Chose the type of process to run',
+    )
+    # set up the parser for manual communication
+    comm_parser = subparsers.add_parser(
+        'comm',
+        help='Manually send ASCII commands to the VPF-730 sensor',
+    )
+    comm_parser.add_argument(
+        'ascii_command',
+        help=(
+            'The ASCII command to be send to the VPF-730 sensor e.g: D?. The '
+            'carriage return (\\r) and line feed (\\n) at the end MUST NOT be '
+            'part of the command. It is appended automatically.'
+        ),
+    )
+    comm_parser.add_argument(
+        '--serial-port',
+        help='Serial port the VPF-730 sensor is connected to, e.g /dev/ttyS0',
+    )
+    comm_file_config = comm_parser.add_argument_group('config from file')
+    comm_file_config.description = (
+        'Reads the configuration from a file and overrides all previous CLI '
+        'options'
+    )
+    comm_file_config.add_argument(
+        '-c', '--config',
+        help='Path to an .ini config file',
+    )
+    comm_parser.epilog = (
+        'If no argument for --serial-port is provided, the configuration will '
+        'be read from the environment variable VPF730_PORT.'
     )
 
     # set up the parser for the logger
@@ -205,7 +237,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             logger.info('sender received shutdown signal...')
             sender.sending = False
             return 0
+    elif args.command == 'comm':
+        if args.config:
+            config = configparser.ConfigParser()
+            config.read(args.config)
+            serial_port = config['vpf_730']['serial_port']
+        elif args.serial_port:
+            serial_port = args.serial_port
+        else:
+            serial_port = os.environ['VPF730_PORT']
 
+        com_sender = VPF730(port=serial_port)
+        ret = com_sender.send_command(args.ascii_command)
+        print(ret.decode())
     else:
         raise NotImplementedError()
 

@@ -346,6 +346,20 @@ class VPF730:
         finally:
             self._ser.close()
 
+    def send_command(self, command: str) -> bytes:
+        """Send an ASCII command to the VPF-730. A detailed description can be
+        found in the Biral VPF-XXX Manual starting on page 59:
+        https://www.biral.com/wp-content/uploads/2019/07/VPF-710-730-750-Manual-102186.08E.pdf
+
+        :param command: A valid command e.g: ``D?``
+
+        :return: the response of the sensor as bytest
+        """
+        with self.open_ser():
+            cmd = f'{command}\r\n'
+            self._ser.write(cmd.encode())
+            return self._ser.read_until(b'\r\n')
+
     def measure(self, polled_mode: bool = True) -> Measurement | None:
         """Read the VPF-730 sensor using the previously configured serial
         interface and return a :func:`Measurement` or None, if the sensor did
