@@ -13,7 +13,7 @@ from vpf_730.utils import retry
 def test_measurement_from_msg_precip_type_invalid():
     invalid_msg = b'PW01,0060,0000,001.19 KM,IV ,HZ,00.06,00.0000,+020.5 C,0000,002.51,002.51,+011.10,  0000,000,OOO,002.51'  # noqa: E501
     with pytest.raises(ValueError) as exc_info:
-        Measurement.from_msg(invalid_msg)
+        Measurement.from_msg(invalid_msg, 1681399838)
 
     assert exc_info.value.args[0] == (
         "unknown precipitation type 'IV'. Must be one of: NP, DZ-, DZ, "
@@ -24,7 +24,7 @@ def test_measurement_from_msg_precip_type_invalid():
 def test_measurement_from_msg_obstruction_invalid():
     invalid_msg = b'PW01,0060,0000,001.19 KM,NP ,IV,00.06,00.0000,+020.5 C,0000,002.51,002.51,+011.10,  0000,000,OOO,002.51'  # noqa: E501
     with pytest.raises(ValueError) as exc_info:
-        Measurement.from_msg(invalid_msg)
+        Measurement.from_msg(invalid_msg, 1681399838)
 
     assert exc_info.value.args[0] == (
         "unknown obstruction to vision type 'IV'. Must be one of: I, V"
@@ -39,7 +39,7 @@ def test_measurement_from_msg_obstruction_invalid():
     ),
 )
 def test_measurement_to_readable_precip_type(test_msg, abbrev, readable):
-    m = Measurement.from_msg(test_msg)._asdict()
+    m = Measurement.from_msg(test_msg, 1681399838)._asdict()
     m['precipitation_type_msg'] = abbrev
     modified_m = Measurement(**m)
     assert modified_m.precipitation_type_msg_readable == readable
@@ -54,22 +54,20 @@ def test_measurement_to_readable_precip_type(test_msg, abbrev, readable):
     ),
 )
 def test_measurement_to_readable_obstruction(test_msg, abbrev, readable):
-    m = Measurement.from_msg(test_msg)._asdict()
+    m = Measurement.from_msg(test_msg, 1681399838)._asdict()
     m['obstruction_to_vision'] = abbrev
     modified_m = Measurement(**m)
     assert modified_m.obstruction_to_vision_readable == readable
 
 
-@freeze_time('2022-07-25 14:22:57')
 def test_measurement_to_csv_str(test_msg):
-    m = Measurement.from_msg(test_msg)
+    m = Measurement.from_msg(test_msg, 1658758977)
     assert m.to_csv() == '1658758977,1,60,0,1.19,NP,HZ,0.06,0.0,20.5,0,2.51,2.51,11.1,OOO,2.51'  # noqa: E501
 
 
-@freeze_time('2022-07-25 14:22:57')
 def test_measurement_to_csv_file_new_file(test_msg, tmpdir):
     with tmpdir.as_cwd():
-        m = Measurement.from_msg(test_msg)
+        m = Measurement.from_msg(test_msg, 1658758977)
         assert m.to_csv('test.csv') is None
 
         with open('test.csv') as f:
@@ -81,10 +79,9 @@ timestamp,sensor_id,last_measurement_period,time_since_report,optical_range,prec
 '''
 
 
-@freeze_time('2022-07-25 14:22:57')
 def test_measurement_to_csv_file_already_exists(test_msg, tmpdir):
     with tmpdir.as_cwd():
-        m = Measurement.from_msg(test_msg)
+        m = Measurement.from_msg(test_msg, 1658758977)
         with open('test.csv', 'w') as f:
             f.write('1st line\n')
 
