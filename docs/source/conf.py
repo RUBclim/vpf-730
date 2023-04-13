@@ -1,7 +1,7 @@
 project = 'vpf-730'
 copyright = '2022, Jonas Kittner'
 author = 'Jonas Kittner'
-release = '0.8.0'
+release = '0.9.0'
 
 extensions = [
     'myst_parser',
