@@ -130,12 +130,13 @@ class Measurement(NamedTuple):
         return OBSTRUCTION_TO_VISION[self.obstruction_to_vision]
 
     @classmethod
-    def from_msg(cls, msg: bytes) -> Measurement:
+    def from_msg(cls, msg: bytes, timestamp: int) -> Measurement:
         """Constructs a new :func:`Measurement` from the bytes read.
 
         :param msg: bytes representing a message read from the sensor using
             :func:`VPF730.measure` e.g.
             ``b'PW01,0060,0000,001.19 KM,NP ,HZ,00.06,00.0000,+020.5 C,0000,002.51,002.51,+011.10,  0000,000,OOO,002.51'``
+        :param timestamp: unix timestamp in UTC when the sensor was read
 
         :return: a new instance of :func:`Measurement`.
         """  # noqa: E501
@@ -158,7 +159,7 @@ class Measurement(NamedTuple):
             )
 
         return cls(
-            timestamp=int(datetime.now(timezone.utc).timestamp()),
+            timestamp=timestamp,
             # strip the message header
             sensor_id=int(msg_list[0].lstrip('PW')),
             last_measurement_period=int(msg_list[1]),
@@ -373,12 +374,13 @@ class VPF730:
         :return: a new :func:`Measurement` containing the data read from the
             sensor
         """
+        timestamp = int(datetime.now(timezone.utc).timestamp())
         with self.open_ser():
             if polled_mode is True:
                 self._ser.write(b'D?\r\n')
 
             msg = self._ser.read_until(b'\r\n')
             if msg:
-                return Measurement.from_msg(msg)
+                return Measurement.from_msg(msg=msg, timestamp=timestamp)
             else:
                 return None
