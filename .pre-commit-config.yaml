@@ -2,7 +2,7 @@ ci:
     autoupdate_schedule: monthly
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
@@ -15,7 +15,7 @@ repos:
     -   id: double-quote-string-fixer
     -   id: check-merge-conflict
 -   repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
+    rev: 6.1.0
     hooks:
     -   id: flake8
         additional_dependencies:
@@ -24,8 +24,8 @@ repos:
             -   flake8-noqa
             -   flake8-ban-utcnow
         args: ["--min-python-version=3.9"]
--   repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v2.0.2
+-   repo: https://github.com/hhatto/autopep8
+    rev: v2.0.4
     hooks:
     -   id: autopep8
 -   repo: https://github.com/jkittner/double-indent
@@ -33,22 +33,22 @@ repos:
     hooks:
     -    id: double-indent
 -   repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.9.0
+    rev: v3.12.0
     hooks:
     -   id: reorder-python-imports
         args: [--py39-plus]
 -   repo: https://github.com/asottile/add-trailing-comma
-    rev: v2.4.0
+    rev: v3.1.0
     hooks:
     -   id: add-trailing-comma
         args: [--py36-plus]
 -   repo: https://github.com/asottile/pyupgrade
-    rev: v3.4.0
+    rev: v3.15.0
     hooks:
     -   id: pyupgrade
         args: [--py39-plus]
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.3.0
+    rev: v1.8.0
     hooks:
     -   id: mypy
         additional_dependencies: ['types-freezegun']
