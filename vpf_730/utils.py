@@ -20,7 +20,7 @@ else:  # pragma <3.10 cover
 
 
 @contextlib.contextmanager
-def connect(db_path: str) -> Generator[sqlite3.Connection, None, None]:
+def connect(db_path: str) -> Generator[sqlite3.Connection]:
     """Context manager to connect to a sqlite database.
 
     :param db_path: path to the sqlite database
