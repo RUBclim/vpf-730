@@ -339,7 +339,7 @@ class VPF730:
         self._ser.exclusive = self.exclusive
 
     @contextmanager
-    def open_ser(self) -> Generator[None, None, None]:
+    def open_ser(self) -> Generator[None]:
         """Context manager for opening and closing the serial port"""
         try:
             self._ser.open()
